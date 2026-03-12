@@ -389,8 +389,7 @@ export default function App() {
               <div className="pending-timeline">
                 <TimelineItem date="Sun Mar 15" desc="Selection Sunday — bracket revealed" active={true} />
                 <TimelineItem date="Mon Mar 16" desc="Brackets open for picks" active={false} />
-                <TimelineItem date="Tue Mar 17" desc="Brackets lock · 12:00 PM ET" active={false} />
-                <TimelineItem date="Thu Mar 19" desc="First round tips off" active={false} />
+                <TimelineItem date="Tue Mar 17 & Wed Mar 18" desc="First Four begins" active={false} />
               </div>
             </div>
           </div>
