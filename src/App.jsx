@@ -1,9 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "./supabase.js";
 
-// ── DATA ──────────────────────────────────────────────────────────────────────
 const REGIONS = ["East", "West", "South", "Midwest"];
-
 const TEAMS = {
   East: [
     { seed: 1, name: "Duke" }, { seed: 16, name: "Mount St. Mary's" },
@@ -64,18 +62,11 @@ const buildInitialBracket = () => {
   return bracket;
 };
 
-// ── STYLES ────────────────────────────────────────────────────────────────────
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --orange: #FF5722; --orange-dim: #cc4418;
-    --cream: #FFF8F0; --ink: #1A1208; --mid: #8a7060;
-    --surface: #ffffff; --border: #e8ddd0;
-    --green: #2ECC71; --shadow: 0 2px 12px rgba(26,18,8,0.10);
-  }
+  :root { --orange: #FF5722; --orange-dim: #cc4418; --cream: #FFF8F0; --ink: #1A1208; --mid: #8a7060; --surface: #ffffff; --border: #e8ddd0; --green: #2ECC71; --shadow: 0 2px 12px rgba(26,18,8,0.10); }
   body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--ink); min-height: 100vh; }
-
   .landing { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; position: relative; overflow: hidden; }
   .landing::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 59px, var(--border) 59px, var(--border) 60px), repeating-linear-gradient(90deg, transparent, transparent 59px, var(--border) 59px, var(--border) 60px); opacity: 0.5; }
   .landing-inner { position: relative; z-index: 1; text-align: center; max-width: 560px; }
@@ -87,7 +78,6 @@ const css = `
   .google-btn:hover { background: var(--orange); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(255,87,34,0.35); }
   .google-icon { width: 20px; height: 20px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--orange); }
   .deadline-note { margin-top: 24px; font-size: 12px; color: var(--mid); }
-
   .app { min-height: 100vh; display: flex; flex-direction: column; }
   .topbar { background: var(--ink); color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 56px; position: sticky; top: 0; z-index: 100; }
   .topbar-brand { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 0.05em; }
@@ -100,7 +90,6 @@ const css = `
   .avatar { width: 32px; height: 32px; background: var(--orange); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: white; }
   .signout-btn { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.5); font-size: 11px; padding: 4px 10px; border-radius: 3px; cursor: pointer; font-family: 'DM Sans', sans-serif; }
   .signout-btn:hover { border-color: rgba(255,255,255,0.5); color: white; }
-
   .bracket-page { padding: 32px 16px 100px; overflow-x: auto; }
   .bracket-title { font-family: 'Bebas Neue', sans-serif; font-size: 36px; color: var(--ink); margin-bottom: 4px; }
   .bracket-meta { font-size: 13px; color: var(--mid); margin-bottom: 32px; }
@@ -112,20 +101,17 @@ const css = `
   .round-col { display: flex; flex-direction: column; justify-content: space-around; min-width: 110px; padding: 0 3px; }
   .matchup { display: flex; flex-direction: column; gap: 2px; margin: 4px 0; }
   .team-slot { display: flex; align-items: center; gap: 5px; padding: 5px 7px; background: var(--surface); border: 1.5px solid var(--border); border-radius: 3px; cursor: pointer; transition: all 0.12s; min-height: 30px; font-size: 11px; font-weight: 500; color: var(--ink); user-select: none; overflow: hidden; }
-  .team-slot:hover:not(.empty):not(.tbd) { border-color: var(--orange); background: #fff5f0; }
+  .team-slot:hover:not(.empty) { border-color: var(--orange); background: #fff5f0; }
   .team-slot.selected { background: var(--orange); border-color: var(--orange); color: white; }
   .team-slot.empty { background: #f5f0eb; border-color: #e0d8d0; cursor: default; }
-  .team-slot.tbd { color: var(--mid); font-style: italic; cursor: default; }
   .seed-badge { font-size: 9px; font-weight: 700; color: var(--mid); min-width: 14px; }
   .team-slot.selected .seed-badge { color: rgba(255,255,255,0.7); }
   .team-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10.5px; }
-
-  .final-four-center { display: flex; flex-direction: column; align-items: center; justify-content: space-around; min-width: 180px; min-height: 500px; padding: 0 12px; gap: 8px; }
-  .ff-label { font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 0.1em; color: var(--orange); text-align: center; margin-bottom: 4px; }
-  .champion-slot { background: var(--ink); border: 2px solid var(--orange); border-radius: 4px; padding: 10px 14px; text-align: center; min-width: 140px; }
+  .final-four-center { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 180px; padding: 0 12px; gap: 6px; }
+  .ff-label { font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 0.1em; color: var(--orange); text-align: center; margin-bottom: 8px; }
+  .champion-slot { background: var(--ink); border: 2px solid var(--orange); border-radius: 4px; padding: 10px 14px; text-align: center; min-width: 140px; margin: 12px 0; }
   .champion-label { font-size: 9px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--orange); margin-bottom: 4px; }
   .champion-name { font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: white; }
-
   .save-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--ink); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; z-index: 200; border-top: 2px solid var(--orange); }
   .save-bar-text { color: rgba(255,255,255,0.7); font-size: 13px; }
   .save-bar-text strong { color: white; }
@@ -133,7 +119,6 @@ const css = `
   .save-btn:hover { background: var(--orange-dim); }
   .save-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .saved-badge { background: var(--green); color: white; padding: 10px 20px; border-radius: 3px; font-size: 13px; font-weight: 600; }
-
   .leaderboard-page { max-width: 680px; margin: 0 auto; padding: 40px 20px 80px; }
   .lb-title { font-family: 'Bebas Neue', sans-serif; font-size: 40px; color: var(--ink); margin-bottom: 4px; }
   .lb-meta { font-size: 13px; color: var(--mid); margin-bottom: 32px; display: flex; align-items: center; gap: 8px; }
@@ -157,47 +142,33 @@ const css = `
   .lb-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
   .lb-bar-fill { height: 100%; background: var(--orange); border-radius: 2px; transition: width 0.6s ease; }
   .lb-empty { text-align: center; padding: 60px 20px; color: var(--mid); font-size: 14px; }
-
   .toast { position: fixed; top: 72px; right: 20px; background: var(--ink); color: white; padding: 12px 20px; border-radius: 4px; font-size: 13px; font-weight: 500; border-left: 3px solid var(--orange); z-index: 999; animation: slideIn 0.2s ease; }
   @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
-
   .loading { display: flex; align-items: center; justify-content: center; height: 100vh; font-family: 'Bebas Neue', sans-serif; font-size: 24px; color: var(--orange); letter-spacing: 0.1em; }
 `;
 
-// ── HELPERS ───────────────────────────────────────────────────────────────────
 const getInitials = (name) => name?.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() || "?";
 
 const countPicks = (b) => {
   let count = 0;
-  REGIONS.forEach((r) => {
-    for (let ri = 1; ri < 5; ri++) {
-      b[r].rounds[ri].forEach((t) => { if (t) count++; });
-    }
-  });
+  REGIONS.forEach((r) => { for (let ri = 1; ri < 5; ri++) { b[r]?.rounds[ri]?.forEach((t) => { if (t) count++; }); } });
   if (b.champion) count++;
   return count;
 };
 
-// ── TEAM SLOT ─────────────────────────────────────────────────────────────────
 const TeamSlot = ({ team, selected, onClick, style }) => {
   if (!team) return <div className="team-slot empty" style={style}>—</div>;
   return (
-    <div className={`team-slot${selected ? " selected" : ""}${!team.name ? " tbd" : ""}`} onClick={onClick} title={team.name} style={style}>
+    <div className={`team-slot${selected ? " selected" : ""}`} onClick={onClick} title={team.name} style={style}>
       <span className="seed-badge">{team.seed}</span>
-      <span className="team-name">{team.name || "TBD"}</span>
+      <span className="team-name">{team.name}</span>
     </div>
   );
 };
 
-// ── REGION BRACKET ────────────────────────────────────────────────────────────
 const RegionBracket = ({ region, bracket, onPick, flipped }) => {
   const rounds = bracket[region].rounds;
-  const buildMatchups = (roundTeams) => {
-    const matchups = [];
-    for (let i = 0; i < roundTeams.length; i += 2) matchups.push([roundTeams[i], roundTeams[i + 1]]);
-    return matchups;
-  };
-
+  const buildMatchups = (rt) => { const m = []; for (let i = 0; i < rt.length; i += 2) m.push([rt[i], rt[i+1]]); return m; };
   return (
     <div className="region-block">
       <div className="region-label">{region}</div>
@@ -208,14 +179,11 @@ const RegionBracket = ({ region, bracket, onPick, flipped }) => {
           return (
             <div key={ri} className="round-col" style={{ minWidth: ri === 3 ? 120 : 110 }}>
               {matchups.map((pair, mi) => (
-                <div key={mi} className="matchup" style={{ marginTop: mi === 0 ? spacing / 2 : spacing, marginBottom: spacing / 2 }}>
-                  {pair.map((team, ti) => {
-                    const isSelected = rounds[ri + 1]?.[mi]?.name === team?.name;
-                    return (
-                      <TeamSlot key={ti} team={team} selected={isSelected}
-                        onClick={() => team && onPick(region, ri, mi, ti)} />
-                    );
-                  })}
+                <div key={mi} className="matchup" style={{ marginTop: mi === 0 ? spacing/2 : spacing, marginBottom: spacing/2 }}>
+                  {pair.map((team, ti) => (
+                    <TeamSlot key={ti} team={team} selected={rounds[ri+1]?.[mi]?.name === team?.name}
+                      onClick={() => team && onPick(region, ri, mi, ti)} />
+                  ))}
                 </div>
               ))}
             </div>
@@ -226,67 +194,39 @@ const RegionBracket = ({ region, bracket, onPick, flipped }) => {
   );
 };
 
-// ── LEADERBOARD ───────────────────────────────────────────────────────────────
 const Leaderboard = ({ currentUserId }) => {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
-    const fetchLeaderboard = async () => {
-      const { data } = await supabase
-        .from("brackets")
-        .select("user_name, user_email, score, picks")
-        .order("score", { ascending: false });
-      setEntries(data || []);
-      setLoading(false);
+    const fetch = async () => {
+      const { data } = await supabase.from("brackets").select("user_id, user_name, user_email, score, picks").order("score", { ascending: false });
+      setEntries(data || []); setLoading(false);
     };
-
-    fetchLeaderboard();
-
-    // Realtime subscription
-    const channel = supabase
-      .channel("leaderboard")
-      .on("postgres_changes", { event: "*", schema: "public", table: "brackets" }, fetchLeaderboard)
-      .subscribe();
-
-    return () => supabase.removeChannel(channel);
+    fetch();
+    const ch = supabase.channel("lb").on("postgres_changes", { event: "*", schema: "public", table: "brackets" }, fetch).subscribe();
+    return () => supabase.removeChannel(ch);
   }, []);
-
   const max = entries[0]?.score || 1;
-
   if (loading) return <div className="loading">Loading...</div>;
-
   return (
     <div className="leaderboard-page">
       <div className="lb-title">Leaderboard</div>
-      <div className="lb-meta">
-        <span className="live-dot" />
-        <span>Live · Updates as games resolve · 2026 NCAA Tournament</span>
-      </div>
-      {entries.length === 0 && (
-        <div className="lb-empty">No brackets submitted yet. Be the first! 🏀</div>
-      )}
+      <div className="lb-meta"><span className="live-dot" /><span>Live · 2026 NCAA Tournament</span></div>
+      {entries.length === 0 && <div className="lb-empty">No brackets yet. Be the first! 🏀</div>}
       {entries.map((entry, i) => {
         const isMe = entry.user_id === currentUserId;
         return (
           <div key={entry.user_email} className={`lb-card${isMe ? " me" : ""}`}>
             <div className="lb-row">
-              <div className={`lb-rank${i < 3 ? " top" : ""}`}>{i + 1}</div>
+              <div className={`lb-rank${i < 3 ? " top" : ""}`}>{i+1}</div>
               <div className={`lb-avatar${isMe ? " me-av" : ""}`}>{getInitials(entry.user_name)}</div>
               <div className="lb-info">
                 <div className="lb-name">{entry.user_name}{isMe ? " (you)" : ""}</div>
-                <div className="lb-detail">{entry.score} pts · {countPicks(entry.picks || {})} picks made</div>
+                <div className="lb-detail">{entry.score} pts</div>
               </div>
-              <div className="lb-score">
-                <div className="lb-pts">{entry.score}</div>
-                <div className="lb-pts-label">pts</div>
-              </div>
+              <div className="lb-score"><div className="lb-pts">{entry.score}</div><div className="lb-pts-label">pts</div></div>
             </div>
-            <div className="lb-bar-wrap">
-              <div className="lb-bar">
-                <div className="lb-bar-fill" style={{ width: `${(entry.score / max) * 100}%` }} />
-              </div>
-            </div>
+            <div className="lb-bar-wrap"><div className="lb-bar"><div className="lb-bar-fill" style={{ width: `${(entry.score/max)*100}%` }} /></div></div>
           </div>
         );
       })}
@@ -294,7 +234,6 @@ const Leaderboard = ({ currentUserId }) => {
   );
 };
 
-// ── MAIN APP ──────────────────────────────────────────────────────────────────
 export default function App() {
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -306,55 +245,26 @@ export default function App() {
   const [totalPicks, setTotalPicks] = useState(0);
 
   useEffect(() => {
-    const style = document.createElement("style");
-    style.textContent = css;
-    document.head.appendChild(style);
+    const style = document.createElement("style"); style.textContent = css; document.head.appendChild(style);
     return () => document.head.removeChild(style);
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setAuthLoading(false);
-      if (session) loadBracket(session.user.id);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) loadBracket(session.user.id);
-    });
-
+    supabase.auth.getSession().then(({ data: { session } }) => { setSession(session); setAuthLoading(false); if (session) loadBracket(session.user.id); });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => { setSession(session); if (session) loadBracket(session.user.id); });
     return () => subscription.unsubscribe();
   }, []);
 
-  const loadBracket = async (userId) => {
-    const { data } = await supabase.from("brackets").select("picks").eq("user_id", userId).single();
-    if (data?.picks) {
-      setBracket(data.picks);
-      setTotalPicks(countPicks(data.picks));
-      setSaved(true);
-    }
+  const loadBracket = async (uid) => {
+    const { data } = await supabase.from("brackets").select("picks").eq("user_id", uid).single();
+    if (data?.picks) { setBracket(data.picks); setTotalPicks(countPicks(data.picks)); setSaved(true); }
   };
 
-  const showToast = (msg) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 2500);
-  };
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
 
-  const handleLogin = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: window.location.href },
-    });
-  };
+  const handleLogin = async () => { await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.href } }); };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    setSession(null);
-    setBracket(buildInitialBracket());
-    setSaved(false);
-    setTotalPicks(0);
-  };
+  const handleSignOut = async () => { await supabase.auth.signOut(); setSession(null); setBracket(buildInitialBracket()); setSaved(false); setTotalPicks(0); };
 
   const handlePick = (region, round, matchupIdx, teamIdx) => {
     setBracket((prev) => {
@@ -362,11 +272,7 @@ export default function App() {
       const team = next[region].rounds[round][matchupIdx * 2 + teamIdx];
       if (!team) return prev;
       next[region].rounds[round + 1][matchupIdx] = team;
-      // Clear downstream picks that are now invalid
-      for (let r = round + 2; r < 5; r++) {
-        const slotIdx = Math.floor(matchupIdx / Math.pow(2, r - round - 1));
-        next[region].rounds[r][slotIdx] = null;
-      }
+      for (let r = round + 2; r < 5; r++) { next[region].rounds[r][Math.floor(matchupIdx / Math.pow(2, r - round - 1))] = null; }
       if (next.champion?.region === region) next.champion = null;
       setSaved(false);
       setTotalPicks(countPicks(next));
@@ -378,25 +284,16 @@ export default function App() {
     if (!session) return;
     setSaving(true);
     const { error } = await supabase.from("brackets").upsert({
-      user_id: session.user.id,
-      user_email: session.user.email,
+      user_id: session.user.id, user_email: session.user.email,
       user_name: session.user.user_metadata?.full_name || session.user.email,
-      picks: bracket,
-      updated_at: new Date().toISOString(),
+      picks: bracket, updated_at: new Date().toISOString(),
     }, { onConflict: "user_id" });
-
     setSaving(false);
     if (error) { showToast("Error saving — try again"); return; }
-    setSaved(true);
-    showToast("Bracket saved! 🏀");
+    setSaved(true); showToast("Bracket saved! 🏀");
   };
 
-  const ff = [
-    bracket.East.rounds[4][0],
-    bracket.West.rounds[4][0],
-    bracket.South.rounds[4][0],
-    bracket.Midwest.rounds[4][0],
-  ];
+  const ff = [bracket.East.rounds[4][0], bracket.West.rounds[4][0], bracket.South.rounds[4][0], bracket.Midwest.rounds[4][0]];
 
   if (authLoading) return <div className="loading">BOL MADNESS</div>;
 
@@ -407,18 +304,14 @@ export default function App() {
           <div className="landing-eyebrow">BOL Agency · 2026</div>
           <div className="landing-title">MARCH<br /><span>MADNESS</span></div>
           <div className="landing-sub">Fill out your bracket, track live results, and find out who at BOL actually knows college basketball.</div>
-          <button className="google-btn" onClick={handleLogin}>
-            <span className="google-icon">G</span>
-            Continue with Google
-          </button>
-          <div className="deadline-note">Brackets lock Thursday, March 16 at 11:59 PM ET</div>
+          <button className="google-btn" onClick={handleLogin}><span className="google-icon">G</span>Continue with Google</button>
+          <div className="deadline-note">Brackets lock Tuesday, March 17 at 12:00 PM ET</div>
         </div>
       </div>
     );
   }
 
   const userName = session.user.user_metadata?.full_name || session.user.email;
-  const initials = getInitials(userName);
 
   return (
     <div className="app">
@@ -431,7 +324,7 @@ export default function App() {
         </div>
         <div className="topbar-user">
           <span>{userName}</span>
-          <div className="avatar">{initials}</div>
+          <div className="avatar">{getInitials(userName)}</div>
           <button className="signout-btn" onClick={handleSignOut}>Sign out</button>
         </div>
       </div>
@@ -446,43 +339,28 @@ export default function App() {
                 <RegionBracket region="East" bracket={bracket} onPick={handlePick} flipped={false} />
                 <RegionBracket region="West" bracket={bracket} onPick={handlePick} flipped={false} />
               </div>
-
               <div className="final-four-center">
-                <div>
-                  <div className="ff-label">Final Four</div>
-                  {[ff[0], ff[1]].map((team, i) => (
-                    <TeamSlot key={i} team={team}
-                      selected={bracket.champion?.name === team?.name}
-                      style={{ marginBottom: 6, minWidth: 130 }}
-                      onClick={() => team && setBracket((p) => { const n = {...p, champion: team}; setSaved(false); return n; })} />
-                  ))}
-                </div>
+                <div className="ff-label">Final Four</div>
+                {ff.map((team, i) => (
+                  <TeamSlot key={i} team={team}
+                    selected={bracket.champion?.name === team?.name}
+                    style={{ marginBottom: 6, minWidth: 130 }}
+                    onClick={() => team && setBracket((p) => { const n = { ...p, champion: team }; setSaved(false); return n; })} />
+                ))}
                 <div className="champion-slot">
                   <div className="champion-label">🏆 Champion</div>
                   <div className="champion-name">{bracket.champion?.name || "—"}</div>
                 </div>
-                <div>
-                  {[ff[2], ff[3]].map((team, i) => (
-                    <TeamSlot key={i} team={team}
-                      selected={bracket.champion?.name === team?.name}
-                      style={{ marginBottom: 6, minWidth: 130 }}
-                      onClick={() => team && setBracket((p) => { const n = {...p, champion: team}; setSaved(false); return n; })} />
-                  ))}
-                </div>
               </div>
-
               <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
                 <RegionBracket region="South" bracket={bracket} onPick={handlePick} flipped={true} />
                 <RegionBracket region="Midwest" bracket={bracket} onPick={handlePick} flipped={true} />
               </div>
             </div>
           </div>
-
           <div className="save-bar">
             <div className="save-bar-text"><strong>{totalPicks} picks</strong> made · {63 - totalPicks} remaining</div>
-            {saved ? (
-              <div className="saved-badge">✓ Bracket Saved</div>
-            ) : (
+            {saved ? <div className="saved-badge">✓ Bracket Saved</div> : (
               <button className="save-btn" onClick={handleSave} disabled={totalPicks === 0 || saving}>
                 {saving ? "Saving..." : "Save Bracket"}
               </button>
@@ -490,7 +368,6 @@ export default function App() {
           </div>
         </>
       )}
-
       {tab === "leaderboard" && <Leaderboard currentUserId={session.user.id} />}
     </div>
   );
