@@ -411,7 +411,7 @@ export default function App() {
             </div>
           </div>
           <div className="save-bar">
-            <div className="save-bar-text"><strong>{totalPicks} picks</strong> made · {66 - totalPicks} remaining</div>
+            <div className="save-bar-text"><strong>{totalPicks} picks</strong> made · {63 - totalPicks} remaining</div>
             {saved ? <div className="saved-badge">✓ Bracket Saved</div> : (
               <button className="save-btn" onClick={handleSave} disabled={totalPicks === 0 || saving}>
                 {saving ? "Saving..." : "Save Bracket"}
