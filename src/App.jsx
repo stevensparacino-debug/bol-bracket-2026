@@ -58,6 +58,9 @@ const buildInitialBracket = () => {
       ],
     };
   });
+  // Final Four: semi1 = East vs West, semi2 = South vs Midwest
+  bracket.semi1Winner = null; // winner of East vs West
+  bracket.semi2Winner = null; // winner of South vs Midwest
   bracket.champion = null;
   return bracket;
 };
@@ -107,11 +110,14 @@ const css = `
   .seed-badge { font-size: 9px; font-weight: 700; color: var(--mid); min-width: 14px; }
   .team-slot.selected .seed-badge { color: rgba(255,255,255,0.7); }
   .team-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10.5px; }
-  .final-four-center { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 180px; padding: 0 12px; gap: 6px; }
-  .ff-label { font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 0.1em; color: var(--orange); text-align: center; margin-bottom: 8px; }
-  .champion-slot { background: var(--ink); border: 2px solid var(--orange); border-radius: 4px; padding: 10px 14px; text-align: center; min-width: 140px; margin: 12px 0; }
+  .final-four-center { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 200px; padding: 0 16px; gap: 4px; }
+  .ff-section-label { font-family: 'Bebas Neue', sans-serif; font-size: 11px; letter-spacing: 0.12em; color: var(--mid); text-align: center; margin-bottom: 4px; text-transform: uppercase; }
+  .ff-matchup { display: flex; flex-direction: column; gap: 3px; margin-bottom: 6px; }
+  .vs-divider { text-align: center; font-size: 9px; font-weight: 700; color: var(--mid); letter-spacing: 0.1em; margin: 2px 0; }
+  .champion-slot { background: var(--ink); border: 2px solid var(--orange); border-radius: 4px; padding: 10px 14px; text-align: center; min-width: 150px; margin: 10px 0; }
   .champion-label { font-size: 9px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--orange); margin-bottom: 4px; }
   .champion-name { font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: white; }
+  .championship-label { font-family: 'Bebas Neue', sans-serif; font-size: 11px; letter-spacing: 0.12em; color: var(--orange); text-align: center; margin-bottom: 4px; }
   .save-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--ink); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; z-index: 200; border-top: 2px solid var(--orange); }
   .save-bar-text { color: rgba(255,255,255,0.7); font-size: 13px; }
   .save-bar-text strong { color: white; }
@@ -152,6 +158,8 @@ const getInitials = (name) => name?.split(" ").map((n) => n[0]).join("").slice(0
 const countPicks = (b) => {
   let count = 0;
   REGIONS.forEach((r) => { for (let ri = 1; ri < 5; ri++) { b[r]?.rounds[ri]?.forEach((t) => { if (t) count++; }); } });
+  if (b.semi1Winner) count++;
+  if (b.semi2Winner) count++;
   if (b.champion) count++;
   return count;
 };
@@ -261,9 +269,7 @@ export default function App() {
   };
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
-
   const handleLogin = async () => { await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.href } }); };
-
   const handleSignOut = async () => { await supabase.auth.signOut(); setSession(null); setBracket(buildInitialBracket()); setSaved(false); setTotalPicks(0); };
 
   const handlePick = (region, round, matchupIdx, teamIdx) => {
@@ -273,11 +279,23 @@ export default function App() {
       if (!team) return prev;
       next[region].rounds[round + 1][matchupIdx] = team;
       for (let r = round + 2; r < 5; r++) { next[region].rounds[r][Math.floor(matchupIdx / Math.pow(2, r - round - 1))] = null; }
-      if (next.champion?.region === region) next.champion = null;
+      // Clear semi/final picks if region's FF pick changed
+      if (region === "East" || region === "West") { next.semi1Winner = null; next.champion = null; }
+      if (region === "South" || region === "Midwest") { next.semi2Winner = null; next.champion = null; }
       setSaved(false);
       setTotalPicks(countPicks(next));
       return next;
     });
+  };
+
+  const pickSemi1 = (team) => {
+    setBracket((p) => { const n = { ...p, semi1Winner: team, champion: null }; setSaved(false); setTotalPicks(countPicks(n)); return n; });
+  };
+  const pickSemi2 = (team) => {
+    setBracket((p) => { const n = { ...p, semi2Winner: team, champion: null }; setSaved(false); setTotalPicks(countPicks(n)); return n; });
+  };
+  const pickChampion = (team) => {
+    setBracket((p) => { const n = { ...p, champion: team }; setSaved(false); setTotalPicks(countPicks(n)); return n; });
   };
 
   const handleSave = async () => {
@@ -293,7 +311,11 @@ export default function App() {
     setSaved(true); showToast("Bracket saved! 🏀");
   };
 
-  const ff = [bracket.East.rounds[4][0], bracket.West.rounds[4][0], bracket.South.rounds[4][0], bracket.Midwest.rounds[4][0]];
+  // Final Four teams
+  const eastWinner = bracket.East.rounds[4][0];
+  const westWinner = bracket.West.rounds[4][0];
+  const southWinner = bracket.South.rounds[4][0];
+  const midwestWinner = bracket.Midwest.rounds[4][0];
 
   if (authLoading) return <div className="loading">BOL MADNESS</div>;
 
@@ -335,31 +357,61 @@ export default function App() {
             <div className="bracket-title">Your Bracket</div>
             <div className="bracket-meta">Click a team to advance them · <span className="picks-count">{totalPicks}</span> picks made</div>
             <div className="bracket-layout">
+
               <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
                 <RegionBracket region="East" bracket={bracket} onPick={handlePick} flipped={false} />
                 <RegionBracket region="West" bracket={bracket} onPick={handlePick} flipped={false} />
               </div>
+
+              {/* ── FINAL FOUR + CHAMPIONSHIP CENTER ── */}
               <div className="final-four-center">
-                <div className="ff-label">Final Four</div>
-                {ff.map((team, i) => (
-                  <TeamSlot key={i} team={team}
-                    selected={bracket.champion?.name === team?.name}
-                    style={{ marginBottom: 6, minWidth: 130 }}
-                    onClick={() => team && setBracket((p) => { const n = { ...p, champion: team }; setSaved(false); return n; })} />
-                ))}
+
+                {/* Semifinal 1: East vs West */}
+                <div className="ff-section-label">Semifinal 1</div>
+                <div className="ff-matchup">
+                  <TeamSlot team={eastWinner} selected={bracket.semi1Winner?.name === eastWinner?.name}
+                    style={{ minWidth: 150 }} onClick={() => eastWinner && pickSemi1(eastWinner)} />
+                  <div className="vs-divider">VS</div>
+                  <TeamSlot team={westWinner} selected={bracket.semi1Winner?.name === westWinner?.name}
+                    style={{ minWidth: 150 }} onClick={() => westWinner && pickSemi1(westWinner)} />
+                </div>
+
+                {/* Championship */}
+                <div className="championship-label">🏆 Championship</div>
+                <div className="ff-matchup">
+                  <TeamSlot team={bracket.semi1Winner} selected={bracket.champion?.name === bracket.semi1Winner?.name}
+                    style={{ minWidth: 150 }} onClick={() => bracket.semi1Winner && pickChampion(bracket.semi1Winner)} />
+                  <div className="vs-divider">VS</div>
+                  <TeamSlot team={bracket.semi2Winner} selected={bracket.champion?.name === bracket.semi2Winner?.name}
+                    style={{ minWidth: 150 }} onClick={() => bracket.semi2Winner && pickChampion(bracket.semi2Winner)} />
+                </div>
+
                 <div className="champion-slot">
                   <div className="champion-label">🏆 Champion</div>
                   <div className="champion-name">{bracket.champion?.name || "—"}</div>
                 </div>
+
+                {/* Semifinal 2: South vs Midwest */}
+                <div className="ff-section-label">Semifinal 2</div>
+                <div className="ff-matchup">
+                  <TeamSlot team={southWinner} selected={bracket.semi2Winner?.name === southWinner?.name}
+                    style={{ minWidth: 150 }} onClick={() => southWinner && pickSemi2(southWinner)} />
+                  <div className="vs-divider">VS</div>
+                  <TeamSlot team={midwestWinner} selected={bracket.semi2Winner?.name === midwestWinner?.name}
+                    style={{ minWidth: 150 }} onClick={() => midwestWinner && pickSemi2(midwestWinner)} />
+                </div>
+
               </div>
+
               <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
                 <RegionBracket region="South" bracket={bracket} onPick={handlePick} flipped={true} />
                 <RegionBracket region="Midwest" bracket={bracket} onPick={handlePick} flipped={true} />
               </div>
+
             </div>
           </div>
           <div className="save-bar">
-            <div className="save-bar-text"><strong>{totalPicks} picks</strong> made · {63 - totalPicks} remaining</div>
+            <div className="save-bar-text"><strong>{totalPicks} picks</strong> made · {66 - totalPicks} remaining</div>
             {saved ? <div className="saved-badge">✓ Bracket Saved</div> : (
               <button className="save-btn" onClick={handleSave} disabled={totalPicks === 0 || saving}>
                 {saving ? "Saving..." : "Save Bracket"}
