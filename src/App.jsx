@@ -45,6 +45,9 @@ const TEAMS = {
   ],
 };
 
+// ── FLIP TO false ON SUNDAY AFTER UPDATING TEAMS ──
+const BRACKET_PENDING = true;
+
 const buildInitialBracket = () => {
   const bracket = {};
   REGIONS.forEach((region) => {
@@ -58,9 +61,8 @@ const buildInitialBracket = () => {
       ],
     };
   });
-  // Final Four: semi1 = East vs West, semi2 = South vs Midwest
-  bracket.semi1Winner = null; // winner of East vs West
-  bracket.semi2Winner = null; // winner of South vs Midwest
+  bracket.semi1Winner = null;
+  bracket.semi2Winner = null;
   bracket.champion = null;
   return bracket;
 };
@@ -76,11 +78,19 @@ const css = `
   .landing-eyebrow { font-weight: 600; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--orange); margin-bottom: 16px; }
   .landing-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(72px, 14vw, 120px); line-height: 0.9; color: var(--ink); margin-bottom: 8px; }
   .landing-title span { color: var(--orange); }
-  .landing-sub { font-size: 15px; color: var(--mid); margin-bottom: 48px; line-height: 1.6; }
+  .landing-sub { font-size: 15px; color: var(--mid); margin-bottom: 32px; line-height: 1.6; }
+  .timeline { display: flex; flex-direction: column; gap: 10px; margin-bottom: 36px; text-align: left; background: white; border: 1.5px solid var(--border); border-radius: 6px; padding: 18px 22px; }
+  .timeline-item { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+  .tl-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .tl-dot.now { background: var(--orange); box-shadow: 0 0 0 3px rgba(255,87,34,0.2); }
+  .tl-dot.upcoming { background: var(--border); }
+  .tl-date { font-weight: 600; color: var(--ink); min-width: 90px; }
+  .tl-desc { color: var(--mid); }
+  .tl-desc.now { color: var(--orange); font-weight: 600; }
   .google-btn { display: inline-flex; align-items: center; gap: 12px; background: var(--ink); color: white; border: none; padding: 16px 32px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 500; border-radius: 4px; cursor: pointer; transition: all 0.15s; }
   .google-btn:hover { background: var(--orange); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(255,87,34,0.35); }
   .google-icon { width: 20px; height: 20px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--orange); }
-  .deadline-note { margin-top: 24px; font-size: 12px; color: var(--mid); }
+  .deadline-note { margin-top: 16px; font-size: 12px; color: var(--mid); }
   .app { min-height: 100vh; display: flex; flex-direction: column; }
   .topbar { background: var(--ink); color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 56px; position: sticky; top: 0; z-index: 100; }
   .topbar-brand { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 0.05em; }
@@ -93,6 +103,12 @@ const css = `
   .avatar { width: 32px; height: 32px; background: var(--orange); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: white; }
   .signout-btn { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.5); font-size: 11px; padding: 4px 10px; border-radius: 3px; cursor: pointer; font-family: 'DM Sans', sans-serif; }
   .signout-btn:hover { border-color: rgba(255,255,255,0.5); color: white; }
+  .pending-page { min-height: calc(100vh - 56px); display: flex; align-items: center; justify-content: center; padding: 40px 20px; }
+  .pending-inner { text-align: center; max-width: 460px; }
+  .pending-badge { display: inline-block; background: var(--orange); color: white; font-size: 10px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; padding: 5px 12px; border-radius: 2px; margin-bottom: 20px; }
+  .pending-title { font-family: 'Bebas Neue', sans-serif; font-size: 52px; color: var(--ink); line-height: 1; margin-bottom: 12px; }
+  .pending-sub { font-size: 14px; color: var(--mid); line-height: 1.7; margin-bottom: 32px; }
+  .pending-timeline { text-align: left; background: white; border: 1.5px solid var(--border); border-radius: 6px; padding: 18px 22px; display: flex; flex-direction: column; gap: 10px; }
   .bracket-page { padding: 32px 16px 100px; overflow-x: auto; }
   .bracket-title { font-family: 'Bebas Neue', sans-serif; font-size: 36px; color: var(--ink); margin-bottom: 4px; }
   .bracket-meta { font-size: 13px; color: var(--mid); margin-bottom: 32px; }
@@ -202,6 +218,14 @@ const RegionBracket = ({ region, bracket, onPick, flipped }) => {
   );
 };
 
+const TimelineItem = ({ date, desc, active }) => (
+  <div className="timeline-item">
+    <div className={`tl-dot ${active ? "now" : "upcoming"}`} />
+    <span className="tl-date">{date}</span>
+    <span className={`tl-desc${active ? " now" : ""}`}>{desc}</span>
+  </div>
+);
+
 const Leaderboard = ({ currentUserId }) => {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -220,7 +244,7 @@ const Leaderboard = ({ currentUserId }) => {
     <div className="leaderboard-page">
       <div className="lb-title">Leaderboard</div>
       <div className="lb-meta"><span className="live-dot" /><span>Live · 2026 NCAA Tournament</span></div>
-      {entries.length === 0 && <div className="lb-empty">No brackets yet. Be the first! 🏀</div>}
+      {entries.length === 0 && <div className="lb-empty">No brackets yet. Check back after Selection Sunday! 🏀</div>}
       {entries.map((entry, i) => {
         const isMe = entry.user_id === currentUserId;
         return (
@@ -279,7 +303,6 @@ export default function App() {
       if (!team) return prev;
       next[region].rounds[round + 1][matchupIdx] = team;
       for (let r = round + 2; r < 5; r++) { next[region].rounds[r][Math.floor(matchupIdx / Math.pow(2, r - round - 1))] = null; }
-      // Clear semi/final picks if region's FF pick changed
       if (region === "East" || region === "West") { next.semi1Winner = null; next.champion = null; }
       if (region === "South" || region === "Midwest") { next.semi2Winner = null; next.champion = null; }
       setSaved(false);
@@ -311,7 +334,6 @@ export default function App() {
     setSaved(true); showToast("Bracket saved! 🏀");
   };
 
-  // Final Four teams
   const eastWinner = bracket.East.rounds[4][0];
   const westWinner = bracket.West.rounds[4][0];
   const southWinner = bracket.South.rounds[4][0];
@@ -319,15 +341,22 @@ export default function App() {
 
   if (authLoading) return <div className="loading">BOL MADNESS</div>;
 
+  // ── LOGGED OUT ──
   if (!session) {
     return (
       <div className="landing">
         <div className="landing-inner">
           <div className="landing-eyebrow">BOL Agency · 2026</div>
           <div className="landing-title">MARCH<br /><span>MADNESS</span></div>
-          <div className="landing-sub">Fill out your bracket, track live results, and find out who at BOL actually knows college basketball.</div>
-          <button className="google-btn" onClick={handleLogin}><span className="google-icon">G</span>Continue with Google</button>
-          <div className="deadline-note">Brackets lock Monday, March 16 at 11:59 PM ET</div>
+          <div className="landing-sub">The field drops Sunday. Sign in now so you're ready to fill out your bracket the moment it's live.</div>
+          <div className="timeline">
+            <TimelineItem date="Sun Mar 15" desc="Selection Sunday — bracket revealed" active={true} />
+            <TimelineItem date="Mon Mar 16" desc="Brackets open for picks" active={false} />
+            <TimelineItem date="Tue Mar 17" desc="Brackets lock · 12:00 PM ET" active={false} />
+            <TimelineItem date="Thu Mar 19" desc="First round tips off" active={false} />
+          </div>
+          <button className="google-btn" onClick={handleLogin}><span className="google-icon">G</span>Sign in with Google</button>
+          <div className="deadline-note">BOL Google accounts only · Brackets lock Tuesday March 17 at noon</div>
         </div>
       </div>
     );
@@ -335,6 +364,44 @@ export default function App() {
 
   const userName = session.user.user_metadata?.full_name || session.user.email;
 
+  // ── LOGGED IN + BRACKET PENDING ──
+  if (BRACKET_PENDING) {
+    return (
+      <div className="app">
+        {toast && <div className="toast">{toast}</div>}
+        <div className="topbar">
+          <div className="topbar-brand">BOL <span>MADNESS</span></div>
+          <div className="topbar-nav">
+            <button className={`nav-btn${tab === "bracket" ? " active" : ""}`} onClick={() => setTab("bracket")}>My Bracket</button>
+            <button className={`nav-btn${tab === "leaderboard" ? " active" : ""}`} onClick={() => setTab("leaderboard")}>Leaderboard</button>
+          </div>
+          <div className="topbar-user">
+            <span>{userName}</span>
+            <div className="avatar">{getInitials(userName)}</div>
+            <button className="signout-btn" onClick={handleSignOut}>Sign out</button>
+          </div>
+        </div>
+        {tab === "bracket" && (
+          <div className="pending-page">
+            <div className="pending-inner">
+              <div className="pending-badge">⏳ Coming Sunday</div>
+              <div className="pending-title">Bracket Pending</div>
+              <div className="pending-sub">You're signed in and ready to go. The 2026 field gets revealed on Selection Sunday — check back Sunday evening to fill out your picks.</div>
+              <div className="pending-timeline">
+                <TimelineItem date="Sun Mar 15" desc="Selection Sunday — bracket revealed" active={true} />
+                <TimelineItem date="Mon Mar 16" desc="Brackets open for picks" active={false} />
+                <TimelineItem date="Tue Mar 17" desc="Brackets lock · 12:00 PM ET" active={false} />
+                <TimelineItem date="Thu Mar 19" desc="First round tips off" active={false} />
+              </div>
+            </div>
+          </div>
+        )}
+        {tab === "leaderboard" && <Leaderboard currentUserId={session.user.id} />}
+      </div>
+    );
+  }
+
+  // ── LOGGED IN + BRACKET OPEN ──
   return (
     <div className="app">
       {toast && <div className="toast">{toast}</div>}
@@ -350,23 +417,17 @@ export default function App() {
           <button className="signout-btn" onClick={handleSignOut}>Sign out</button>
         </div>
       </div>
-
       {tab === "bracket" && (
         <>
           <div className="bracket-page">
             <div className="bracket-title">Your Bracket</div>
             <div className="bracket-meta">Click a team to advance them · <span className="picks-count">{totalPicks}</span> picks made</div>
             <div className="bracket-layout">
-
               <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
                 <RegionBracket region="East" bracket={bracket} onPick={handlePick} flipped={false} />
                 <RegionBracket region="West" bracket={bracket} onPick={handlePick} flipped={false} />
               </div>
-
-              {/* ── FINAL FOUR + CHAMPIONSHIP CENTER ── */}
               <div className="final-four-center">
-
-                {/* Semifinal 1: East vs West */}
                 <div className="ff-section-label">Semifinal 1</div>
                 <div className="ff-matchup">
                   <TeamSlot team={eastWinner} selected={bracket.semi1Winner?.name === eastWinner?.name}
@@ -375,8 +436,6 @@ export default function App() {
                   <TeamSlot team={westWinner} selected={bracket.semi1Winner?.name === westWinner?.name}
                     style={{ minWidth: 150 }} onClick={() => westWinner && pickSemi1(westWinner)} />
                 </div>
-
-                {/* Championship */}
                 <div className="championship-label">🏆 Championship</div>
                 <div className="ff-matchup">
                   <TeamSlot team={bracket.semi1Winner} selected={bracket.champion?.name === bracket.semi1Winner?.name}
@@ -385,13 +444,10 @@ export default function App() {
                   <TeamSlot team={bracket.semi2Winner} selected={bracket.champion?.name === bracket.semi2Winner?.name}
                     style={{ minWidth: 150 }} onClick={() => bracket.semi2Winner && pickChampion(bracket.semi2Winner)} />
                 </div>
-
                 <div className="champion-slot">
                   <div className="champion-label">🏆 Champion</div>
                   <div className="champion-name">{bracket.champion?.name || "—"}</div>
                 </div>
-
-                {/* Semifinal 2: South vs Midwest */}
                 <div className="ff-section-label">Semifinal 2</div>
                 <div className="ff-matchup">
                   <TeamSlot team={southWinner} selected={bracket.semi2Winner?.name === southWinner?.name}
@@ -400,14 +456,11 @@ export default function App() {
                   <TeamSlot team={midwestWinner} selected={bracket.semi2Winner?.name === midwestWinner?.name}
                     style={{ minWidth: 150 }} onClick={() => midwestWinner && pickSemi2(midwestWinner)} />
                 </div>
-
               </div>
-
               <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
                 <RegionBracket region="South" bracket={bracket} onPick={handlePick} flipped={true} />
                 <RegionBracket region="Midwest" bracket={bracket} onPick={handlePick} flipped={true} />
               </div>
-
             </div>
           </div>
           <div className="save-bar">
