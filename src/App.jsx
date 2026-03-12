@@ -411,7 +411,7 @@ export default function App() {
             <span className="google-icon">G</span>
             Continue with Google
           </button>
-          <div className="deadline-note">Brackets lock Thursday, March 20 at 12:15 PM ET</div>
+          <div className="deadline-note">Brackets lock Thursday, March 16 at 11:59 PM ET</div>
         </div>
       </div>
     );
