@@ -327,7 +327,7 @@ export default function App() {
           <div className="landing-title">MARCH<br /><span>MADNESS</span></div>
           <div className="landing-sub">Fill out your bracket, track live results, and find out who at BOL actually knows college basketball.</div>
           <button className="google-btn" onClick={handleLogin}><span className="google-icon">G</span>Continue with Google</button>
-          <div className="deadline-note">Brackets lock Tuesday, March 17 at 12:00 PM ET</div>
+          <div className="deadline-note">Brackets lock Monday, March 16 at 11:59 PM ET</div>
         </div>
       </div>
     );
