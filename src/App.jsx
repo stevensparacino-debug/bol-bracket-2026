@@ -351,9 +351,8 @@ export default function App() {
           <div className="landing-sub">The field drops Sunday. Sign in now so you're ready to fill out your bracket the moment it's live.</div>
           <div className="timeline">
             <TimelineItem date="Sun Mar 15" desc="Selection Sunday — bracket revealed" active={true} />
-            <TimelineItem date="Mon Mar 16" desc="Brackets open for picks" active={false} />
-            <TimelineItem date="Tue Mar 17" desc="Brackets lock · 12:00 PM ET" active={false} />
-            <TimelineItem date="Thu Mar 19" desc="First round tips off" active={false} />
+            <TimelineItem date="Tue Mar 16" desc="Make your picks" active={false} />
+            <TimelineItem date="Tue Mar 17 & Wed Mar 18" desc="First Four begins" active={false} />
           </div>
           <button className="google-btn" onClick={handleLogin}><span className="google-icon">G</span>Sign in with Google</button>
           <div className="deadline-note">BOL Google accounts only · Brackets lock Tuesday March 17 at noon</div>
