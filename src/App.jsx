@@ -2,51 +2,54 @@ import { useState, useEffect } from "react";
 import { supabase } from "./supabase.js";
 
 const REGIONS = ["East", "West", "South", "Midwest"];
+
+// ── 2026 NCAA TOURNAMENT — Selection Sunday March 15 ──
+// First Four play-in slots shown as "Team A/Team B" until winners known
 const TEAMS = {
   East: [
-    { seed: 1, name: "Duke" }, { seed: 16, name: "Mount St. Mary's" },
-    { seed: 8, name: "Mississippi St." }, { seed: 9, name: "Baylor" },
-    { seed: 5, name: "Oregon" }, { seed: 12, name: "Liberty" },
-    { seed: 4, name: "Arizona" }, { seed: 13, name: "Akron" },
-    { seed: 6, name: "BYU" }, { seed: 11, name: "VCU" },
-    { seed: 3, name: "Wisconsin" }, { seed: 14, name: "Montana" },
-    { seed: 7, name: "Saint Mary's" }, { seed: 10, name: "Vanderbilt" },
-    { seed: 2, name: "Alabama" }, { seed: 15, name: "Robert Morris" },
+    { seed: 1,  name: "Duke" },           { seed: 16, name: "Siena" },
+    { seed: 8,  name: "Ohio State" },     { seed: 9,  name: "TCU" },
+    { seed: 5,  name: "St. John's" },     { seed: 12, name: "N. Iowa" },
+    { seed: 4,  name: "Kansas" },         { seed: 13, name: "Cal Baptist" },
+    { seed: 6,  name: "Louisville" },     { seed: 11, name: "South Florida" },
+    { seed: 3,  name: "Michigan St." },   { seed: 14, name: "N. Dakota St." },
+    { seed: 7,  name: "UCLA" },           { seed: 10, name: "UCF" },
+    { seed: 2,  name: "UConn" },          { seed: 15, name: "Furman" },
   ],
   West: [
-    { seed: 1, name: "Auburn" }, { seed: 16, name: "Alabama St." },
-    { seed: 8, name: "Louisville" }, { seed: 9, name: "Creighton" },
-    { seed: 5, name: "Michigan" }, { seed: 12, name: "UC San Diego" },
-    { seed: 4, name: "Texas A&M" }, { seed: 13, name: "Yale" },
-    { seed: 6, name: "Ole Miss" }, { seed: 11, name: "Drake" },
-    { seed: 3, name: "Iowa St." }, { seed: 14, name: "Lipscomb" },
-    { seed: 7, name: "Marquette" }, { seed: 10, name: "New Mexico" },
-    { seed: 2, name: "Michigan St." }, { seed: 15, name: "Bryant" },
+    { seed: 1,  name: "Arizona" },        { seed: 16, name: "LIU" },
+    { seed: 8,  name: "Villanova" },      { seed: 9,  name: "Utah State" },
+    { seed: 5,  name: "Wisconsin" },      { seed: 12, name: "High Point" },
+    { seed: 4,  name: "Arkansas" },       { seed: 13, name: "Hawai'i" },
+    { seed: 6,  name: "BYU" },            { seed: 11, name: "TX/NC State" },
+    { seed: 3,  name: "Gonzaga" },        { seed: 14, name: "Kennesaw St." },
+    { seed: 7,  name: "Miami FL" },       { seed: 10, name: "Missouri" },
+    { seed: 2,  name: "Purdue" },         { seed: 15, name: "Queens" },
   ],
   South: [
-    { seed: 1, name: "Florida" }, { seed: 16, name: "Norfolk St." },
-    { seed: 8, name: "UConn" }, { seed: 9, name: "Oklahoma" },
-    { seed: 5, name: "Memphis" }, { seed: 12, name: "Colorado St." },
-    { seed: 4, name: "Maryland" }, { seed: 13, name: "Grand Canyon" },
-    { seed: 6, name: "Missouri" }, { seed: 11, name: "Drake" },
-    { seed: 3, name: "Texas Tech" }, { seed: 14, name: "UNCW" },
-    { seed: 7, name: "Kansas" }, { seed: 10, name: "Arkansas" },
-    { seed: 2, name: "St. John's" }, { seed: 15, name: "Omaha" },
+    { seed: 1,  name: "Florida" },        { seed: 16, name: "PVA&M/Lehigh" },
+    { seed: 8,  name: "Clemson" },        { seed: 9,  name: "Iowa" },
+    { seed: 5,  name: "Vanderbilt" },     { seed: 12, name: "McNeese" },
+    { seed: 4,  name: "Nebraska" },       { seed: 13, name: "Troy" },
+    { seed: 6,  name: "N. Carolina" },    { seed: 11, name: "VCU" },
+    { seed: 3,  name: "Illinois" },       { seed: 14, name: "Penn" },
+    { seed: 7,  name: "St. Mary's" },     { seed: 10, name: "Texas A&M" },
+    { seed: 2,  name: "Houston" },        { seed: 15, name: "Idaho" },
   ],
   Midwest: [
-    { seed: 1, name: "Houston" }, { seed: 16, name: "SIUE" },
-    { seed: 8, name: "Gonzaga" }, { seed: 9, name: "Georgia" },
-    { seed: 5, name: "Clemson" }, { seed: 12, name: "McNeese" },
-    { seed: 4, name: "Purdue" }, { seed: 13, name: "High Point" },
-    { seed: 6, name: "Illinois" }, { seed: 11, name: "Texas" },
-    { seed: 3, name: "Kentucky" }, { seed: 14, name: "Troy" },
-    { seed: 7, name: "UCLA" }, { seed: 10, name: "Utah St." },
-    { seed: 2, name: "Tennessee" }, { seed: 15, name: "Wofford" },
+    { seed: 1,  name: "Michigan" },       { seed: 16, name: "UMBC/Howard" },
+    { seed: 8,  name: "Georgia" },        { seed: 9,  name: "Saint Louis" },
+    { seed: 5,  name: "Texas Tech" },     { seed: 12, name: "Akron" },
+    { seed: 4,  name: "Alabama" },        { seed: 13, name: "Hofstra" },
+    { seed: 6,  name: "Tennessee" },      { seed: 11, name: "MiamiOH/SMU" },
+    { seed: 3,  name: "Virginia" },       { seed: 14, name: "Wright State" },
+    { seed: 7,  name: "Kentucky" },       { seed: 10, name: "Santa Clara" },
+    { seed: 2,  name: "Iowa State" },     { seed: 15, name: "Tennessee St." },
   ],
 };
 
-// ── FLIP TO false ON SUNDAY AFTER UPDATING TEAMS ──
-const BRACKET_PENDING = true;
+// ── SET TO true TO SHOW PENDING SCREEN, false TO OPEN BRACKET ──
+const BRACKET_PENDING = false;
 
 const buildInitialBracket = () => {
   const bracket = {};
@@ -61,8 +64,8 @@ const buildInitialBracket = () => {
       ],
     };
   });
-  bracket.semi1Winner = null;
-  bracket.semi2Winner = null;
+  bracket.semi1Winner = null; // East vs South
+  bracket.semi2Winner = null; // West vs Midwest
   bracket.champion = null;
   return bracket;
 };
@@ -83,6 +86,7 @@ const css = `
   .timeline-item { display: flex; align-items: center; gap: 12px; font-size: 13px; }
   .tl-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .tl-dot.now { background: var(--orange); box-shadow: 0 0 0 3px rgba(255,87,34,0.2); }
+  .tl-dot.done { background: var(--green); }
   .tl-dot.upcoming { background: var(--border); }
   .tl-date { font-weight: 600; color: var(--ink); min-width: 90px; }
   .tl-desc { color: var(--mid); }
@@ -218,11 +222,11 @@ const RegionBracket = ({ region, bracket, onPick, flipped }) => {
   );
 };
 
-const TimelineItem = ({ date, desc, active }) => (
+const TimelineItem = ({ date, desc, status }) => (
   <div className="timeline-item">
-    <div className={`tl-dot ${active ? "now" : "upcoming"}`} />
+    <div className={`tl-dot ${status}`} />
     <span className="tl-date">{date}</span>
-    <span className={`tl-desc${active ? " now" : ""}`}>{desc}</span>
+    <span className={`tl-desc${status === "now" ? " now" : ""}`}>{desc}</span>
   </div>
 );
 
@@ -244,7 +248,7 @@ const Leaderboard = ({ currentUserId }) => {
     <div className="leaderboard-page">
       <div className="lb-title">Leaderboard</div>
       <div className="lb-meta"><span className="live-dot" /><span>Live · 2026 NCAA Tournament</span></div>
-      {entries.length === 0 && <div className="lb-empty">No brackets yet. Check back after Selection Sunday! 🏀</div>}
+      {entries.length === 0 && <div className="lb-empty">No brackets yet. Be the first! 🏀</div>}
       {entries.map((entry, i) => {
         const isMe = entry.user_id === currentUserId;
         return (
@@ -303,8 +307,8 @@ export default function App() {
       if (!team) return prev;
       next[region].rounds[round + 1][matchupIdx] = team;
       for (let r = round + 2; r < 5; r++) { next[region].rounds[r][Math.floor(matchupIdx / Math.pow(2, r - round - 1))] = null; }
-      if (region === "East" || region === "West") { next.semi1Winner = null; next.champion = null; }
-      if (region === "South" || region === "Midwest") { next.semi2Winner = null; next.champion = null; }
+      if (region === "East" || region === "South") { next.semi1Winner = null; next.champion = null; }
+      if (region === "West" || region === "Midwest") { next.semi2Winner = null; next.champion = null; }
       setSaved(false);
       setTotalPicks(countPicks(next));
       return next;
@@ -334,9 +338,10 @@ export default function App() {
     setSaved(true); showToast("Bracket saved! 🏀");
   };
 
+  // Final Four: East vs South, West vs Midwest
   const eastWinner = bracket.East.rounds[4][0];
-  const westWinner = bracket.West.rounds[4][0];
   const southWinner = bracket.South.rounds[4][0];
+  const westWinner = bracket.West.rounds[4][0];
   const midwestWinner = bracket.Midwest.rounds[4][0];
 
   if (authLoading) return <div className="loading">BOL MADNESS</div>;
@@ -348,14 +353,15 @@ export default function App() {
         <div className="landing-inner">
           <div className="landing-eyebrow">BOL Agency · 2026</div>
           <div className="landing-title">MARCH<br /><span>MADNESS</span></div>
-          <div className="landing-sub">The field drops Sunday. Sign in now so you're ready to fill out your bracket the moment it's live.</div>
+          <div className="landing-sub">The bracket is live. Sign in and make your picks before Tuesday March 17 at noon ET.</div>
           <div className="timeline">
-            <TimelineItem date="Sun Mar 15" desc="Selection Sunday — bracket revealed" active={true} />
-            <TimelineItem date="Tue Mar 16" desc="Make your picks" active={false} />
-            <TimelineItem date="Tue Mar 17 & Wed Mar 18" desc="First Four begins" active={false} />
+            <TimelineItem date="Sun Mar 15" desc="Selection Sunday — bracket revealed" status="done" />
+            <TimelineItem date="Tue Mar 17" desc="First Four · Dayton, OH" status="now" />
+            <TimelineItem date="Thu Mar 19" desc="Round of 64 tips off" status="upcoming" />
+            <TimelineItem date="Sat Apr 4" desc="Final Four · Indianapolis" status="upcoming" />
           </div>
           <button className="google-btn" onClick={handleLogin}><span className="google-icon">G</span>Sign in with Google</button>
-          <div className="deadline-note">BOL Google accounts only · Brackets lock Tuesday March 17 at noon</div>
+          <div className="deadline-note">BOL Google accounts only · Brackets lock Tuesday March 17 at noon ET</div>
         </div>
       </div>
     );
@@ -383,13 +389,14 @@ export default function App() {
         {tab === "bracket" && (
           <div className="pending-page">
             <div className="pending-inner">
-              <div className="pending-badge">⏳ Coming Sunday</div>
+              <div className="pending-badge">⏳ Coming Soon</div>
               <div className="pending-title">Bracket Pending</div>
-              <div className="pending-sub">You're signed in and ready to go. The 2026 field gets revealed on Selection Sunday — check back Sunday evening to fill out your picks.</div>
+              <div className="pending-sub">You're signed in and ready. Check back after Selection Sunday to fill out your picks.</div>
               <div className="pending-timeline">
-                <TimelineItem date="Sun Mar 15" desc="Selection Sunday — bracket revealed" active={true} />
-                <TimelineItem date="Mon Mar 16" desc="Brackets open for picks" active={false} />
-                <TimelineItem date="Tue Mar 17 & Wed Mar 18" desc="First Four begins" active={false} />
+                <TimelineItem date="Sun Mar 15" desc="Selection Sunday — bracket revealed" status="done" />
+                <TimelineItem date="Tue Mar 17" desc="First Four · Dayton, OH" status="now" />
+                <TimelineItem date="Thu Mar 19" desc="Round of 64 tips off" status="upcoming" />
+                <TimelineItem date="Sat Apr 4" desc="Final Four · Indianapolis" status="upcoming" />
               </div>
             </div>
           </div>
@@ -415,25 +422,31 @@ export default function App() {
           <button className="signout-btn" onClick={handleSignOut}>Sign out</button>
         </div>
       </div>
+
       {tab === "bracket" && (
         <>
           <div className="bracket-page">
             <div className="bracket-title">Your Bracket</div>
-            <div className="bracket-meta">Click a team to advance them · <span className="picks-count">{totalPicks}</span> picks made</div>
+            <div className="bracket-meta">Click a team to advance them · <span className="picks-count">{totalPicks}</span> picks made · Locks Tue Mar 17 noon ET</div>
             <div className="bracket-layout">
+
               <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
                 <RegionBracket region="East" bracket={bracket} onPick={handlePick} flipped={false} />
-                <RegionBracket region="West" bracket={bracket} onPick={handlePick} flipped={false} />
+                <RegionBracket region="South" bracket={bracket} onPick={handlePick} flipped={false} />
               </div>
+
+              {/* ── FINAL FOUR: East/South vs West/Midwest ── */}
               <div className="final-four-center">
+
                 <div className="ff-section-label">Semifinal 1</div>
                 <div className="ff-matchup">
                   <TeamSlot team={eastWinner} selected={bracket.semi1Winner?.name === eastWinner?.name}
                     style={{ minWidth: 150 }} onClick={() => eastWinner && pickSemi1(eastWinner)} />
                   <div className="vs-divider">VS</div>
-                  <TeamSlot team={westWinner} selected={bracket.semi1Winner?.name === westWinner?.name}
-                    style={{ minWidth: 150 }} onClick={() => westWinner && pickSemi1(westWinner)} />
+                  <TeamSlot team={southWinner} selected={bracket.semi1Winner?.name === southWinner?.name}
+                    style={{ minWidth: 150 }} onClick={() => southWinner && pickSemi1(southWinner)} />
                 </div>
+
                 <div className="championship-label">🏆 Championship</div>
                 <div className="ff-matchup">
                   <TeamSlot team={bracket.semi1Winner} selected={bracket.champion?.name === bracket.semi1Winner?.name}
@@ -442,23 +455,28 @@ export default function App() {
                   <TeamSlot team={bracket.semi2Winner} selected={bracket.champion?.name === bracket.semi2Winner?.name}
                     style={{ minWidth: 150 }} onClick={() => bracket.semi2Winner && pickChampion(bracket.semi2Winner)} />
                 </div>
+
                 <div className="champion-slot">
                   <div className="champion-label">🏆 Champion</div>
                   <div className="champion-name">{bracket.champion?.name || "—"}</div>
                 </div>
+
                 <div className="ff-section-label">Semifinal 2</div>
                 <div className="ff-matchup">
-                  <TeamSlot team={southWinner} selected={bracket.semi2Winner?.name === southWinner?.name}
-                    style={{ minWidth: 150 }} onClick={() => southWinner && pickSemi2(southWinner)} />
+                  <TeamSlot team={westWinner} selected={bracket.semi2Winner?.name === westWinner?.name}
+                    style={{ minWidth: 150 }} onClick={() => westWinner && pickSemi2(westWinner)} />
                   <div className="vs-divider">VS</div>
                   <TeamSlot team={midwestWinner} selected={bracket.semi2Winner?.name === midwestWinner?.name}
                     style={{ minWidth: 150 }} onClick={() => midwestWinner && pickSemi2(midwestWinner)} />
                 </div>
+
               </div>
+
               <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-                <RegionBracket region="South" bracket={bracket} onPick={handlePick} flipped={true} />
+                <RegionBracket region="West" bracket={bracket} onPick={handlePick} flipped={true} />
                 <RegionBracket region="Midwest" bracket={bracket} onPick={handlePick} flipped={true} />
               </div>
+
             </div>
           </div>
           <div className="save-bar">
