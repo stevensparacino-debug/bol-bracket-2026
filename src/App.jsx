@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabase.js";
 
 const REGIONS = ["East", "West", "South", "Midwest"];
@@ -186,8 +186,15 @@ const buildInitialBracket = () => {
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap');
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root { --orange: #FF5722; --orange-dim: #cc4418; --cream: #FFF8F0; --ink: #1A1208; --mid: #8a7060; --surface: #ffffff; --border: #e8ddd0; --green: #2ECC71; --red: #e74c3c; --shadow: 0 2px 12px rgba(26,18,8,0.10); }
+  :root {
+    --orange: #FF5722; --orange-dim: #cc4418; --cream: #FFF8F0; --ink: #1A1208;
+    --mid: #8a7060; --surface: #ffffff; --border: #e8ddd0; --green: #2ECC71;
+    --red: #e74c3c; --shadow: 0 2px 12px rgba(26,18,8,0.10);
+    --slot-h: 38px; --slot-font: 13px; --seed-font: 10px;
+  }
   body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--ink); min-height: 100vh; }
+
+  /* ── LANDING ── */
   .landing { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; position: relative; overflow: hidden; }
   .landing::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 59px, var(--border) 59px, var(--border) 60px), repeating-linear-gradient(90deg, transparent, transparent 59px, var(--border) 59px, var(--border) 60px); opacity: 0.5; }
   .landing-inner { position: relative; z-index: 1; text-align: center; max-width: 560px; }
@@ -208,6 +215,8 @@ const css = `
   .google-btn:hover { background: var(--orange); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(255,87,34,0.35); }
   .google-icon { width: 20px; height: 20px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--orange); }
   .deadline-note { margin-top: 16px; font-size: 12px; color: var(--mid); }
+
+  /* ── APP SHELL ── */
   .app { min-height: 100vh; display: flex; flex-direction: column; }
   .topbar { background: var(--ink); color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 56px; position: sticky; top: 0; z-index: 100; }
   .topbar-brand { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 0.05em; }
@@ -219,80 +228,111 @@ const css = `
   .nav-btn.admin-btn { color: rgba(255,165,0,0.7); }
   .nav-btn.admin-btn.active { color: orange; }
   .topbar-user { display: flex; align-items: center; gap: 10px; font-size: 13px; color: rgba(255,255,255,0.7); }
-  .avatar { width: 32px; height: 32px; background: var(--orange); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: white; }
-  .signout-btn { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.5); font-size: 11px; padding: 4px 10px; border-radius: 3px; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+  .topbar-user .name { display: none; }
+  @media (min-width: 640px) { .topbar-user .name { display: block; } }
+  .avatar { width: 32px; height: 32px; background: var(--orange); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: white; flex-shrink: 0; }
+  .signout-btn { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.5); font-size: 11px; padding: 4px 10px; border-radius: 3px; cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap; }
   .signout-btn:hover { border-color: rgba(255,255,255,0.5); color: white; }
-  .bracket-page { padding: 32px 16px 100px; overflow-x: auto; }
-  .bracket-title { font-family: 'Bebas Neue', sans-serif; font-size: 36px; color: var(--ink); margin-bottom: 4px; }
-  .bracket-meta { font-size: 13px; color: var(--mid); margin-bottom: 16px; }
-  .picks-count { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--orange); }
-  .bracket-legend { display: flex; gap: 16px; margin-bottom: 24px; font-size: 11px; color: var(--mid); }
-  .legend-item { display: flex; align-items: center; gap: 5px; }
-  .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+  /* ── BRACKET PAGE ── */
+  .bracket-page { padding: 24px 16px 100px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .bracket-title { font-family: 'Bebas Neue', sans-serif; font-size: 40px; color: var(--ink); margin-bottom: 4px; }
+  .bracket-meta { font-size: 14px; color: var(--mid); margin-bottom: 12px; }
+  .picks-count { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--orange); }
+  .bracket-legend { display: flex; gap: 16px; margin-bottom: 20px; font-size: 12px; color: var(--mid); align-items: center; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 2px; }
   .legend-dot.correct { background: #e8f8ef; border: 1.5px solid var(--green); }
   .legend-dot.eliminated { background: #f5f0eb; border: 1.5px solid #c8c0b8; }
-  .bracket-layout { display: flex; gap: 0; min-width: 1100px; align-items: center; justify-content: center; }
+  .legend-dot.live { background: #fff3e0; border: 1.5px solid var(--orange); }
+  .live-games-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .live-game-chip { background: var(--ink); color: white; border-radius: 4px; padding: 5px 10px; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .live-game-chip .live-pip { width: 6px; height: 6px; background: var(--orange); border-radius: 50%; animation: pulse 1.5s infinite; }
+  .bracket-layout { display: flex; gap: 0; min-width: 1200px; align-items: center; justify-content: center; }
+
+  /* ── REGION ── */
   .region-block { flex: 1; }
-  .region-label { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 0.08em; color: var(--orange); text-align: center; margin-bottom: 12px; }
+  .region-label { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 0.08em; color: var(--orange); text-align: center; margin-bottom: 14px; }
   .rounds-row { display: flex; gap: 0; }
-  .round-col { display: flex; flex-direction: column; justify-content: space-around; min-width: 110px; padding: 0 3px; }
+  .round-col { display: flex; flex-direction: column; justify-content: space-around; min-width: 128px; padding: 0 3px; }
   .matchup { display: flex; flex-direction: column; gap: 2px; margin: 4px 0; }
-  .team-slot { display: flex; align-items: center; gap: 5px; padding: 5px 7px; background: var(--surface); border: 1.5px solid var(--border); border-radius: 3px; cursor: pointer; transition: all 0.12s; min-height: 30px; font-size: 11px; font-weight: 500; color: var(--ink); user-select: none; overflow: hidden; position: relative; }
+
+  /* ── TEAM SLOT ── */
+  .team-slot {
+    display: flex; align-items: center; gap: 6px;
+    padding: 0 8px;
+    background: var(--surface); border: 1.5px solid var(--border); border-radius: 4px;
+    cursor: pointer; transition: all 0.12s;
+    min-height: var(--slot-h); font-size: var(--slot-font); font-weight: 500;
+    color: var(--ink); user-select: none; overflow: hidden; position: relative;
+  }
   .team-slot:hover:not(.empty):not(.eliminated) { border-color: var(--orange); background: #fff5f0; }
   .team-slot.selected { background: var(--orange); border-color: var(--orange); color: white; }
   .team-slot.correct { background: #e8f8ef !important; border-color: var(--green) !important; color: var(--ink) !important; }
   .team-slot.correct .seed-badge { color: var(--green) !important; }
   .team-slot.eliminated { background: #f5f0eb; border-color: #c8c0b8; color: #b0a898; cursor: default; }
-  .team-slot.eliminated .team-name { text-decoration: line-through; opacity: 0.6; }
+  .team-slot.eliminated .team-name { text-decoration: line-through; opacity: 0.55; }
+  .team-slot.live-game { border-color: var(--orange); background: #fff8f0; }
   .team-slot.empty { background: #f5f0eb; border-color: #e0d8d0; cursor: default; }
-  .result-badge { font-size: 9px; font-weight: 700; margin-left: auto; flex-shrink: 0; }
+  .seed-badge { font-size: var(--seed-font); font-weight: 700; color: var(--mid); min-width: 16px; flex-shrink: 0; }
+  .team-slot.selected .seed-badge { color: rgba(255,255,255,0.7); }
+  .team-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+  .live-score { font-size: 11px; font-weight: 700; color: var(--orange); margin-left: auto; flex-shrink: 0; }
+  .result-badge { font-size: 10px; font-weight: 700; margin-left: auto; flex-shrink: 0; }
   .result-badge.correct { color: var(--green); }
   .result-badge.eliminated { color: #b0a898; }
-  .seed-badge { font-size: 9px; font-weight: 700; color: var(--mid); min-width: 14px; }
-  .team-slot.selected .seed-badge { color: rgba(255,255,255,0.7); }
-  .team-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10.5px; }
+
+  /* ── FINAL FOUR CENTER ── */
   .final-four-center { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 200px; padding: 0 16px; gap: 4px; }
-  .ff-section-label { font-family: 'Bebas Neue', sans-serif; font-size: 11px; letter-spacing: 0.12em; color: var(--mid); text-align: center; margin-bottom: 4px; text-transform: uppercase; }
+  .ff-section-label { font-family: 'Bebas Neue', sans-serif; font-size: 12px; letter-spacing: 0.12em; color: var(--mid); text-align: center; margin-bottom: 4px; text-transform: uppercase; }
   .ff-matchup { display: flex; flex-direction: column; gap: 3px; margin-bottom: 6px; }
-  .vs-divider { text-align: center; font-size: 9px; font-weight: 700; color: var(--mid); letter-spacing: 0.1em; margin: 2px 0; }
-  .champion-slot { background: var(--ink); border: 2px solid var(--orange); border-radius: 4px; padding: 10px 14px; text-align: center; min-width: 150px; margin: 10px 0; }
-  .champion-label { font-size: 9px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--orange); margin-bottom: 4px; }
-  .champion-name { font-family: 'Bebas Neue', sans-serif; font-size: 18px; color: white; }
-  .championship-label { font-family: 'Bebas Neue', sans-serif; font-size: 11px; letter-spacing: 0.12em; color: var(--orange); text-align: center; margin-bottom: 4px; }
-  .save-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--ink); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; z-index: 200; border-top: 2px solid var(--orange); }
-  .save-bar-text { color: rgba(255,255,255,0.7); font-size: 13px; }
+  .vs-divider { text-align: center; font-size: 10px; font-weight: 700; color: var(--mid); letter-spacing: 0.1em; margin: 2px 0; }
+  .champion-slot { background: var(--ink); border: 2px solid var(--orange); border-radius: 4px; padding: 12px 16px; text-align: center; min-width: 160px; margin: 10px 0; }
+  .champion-label { font-size: 10px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--orange); margin-bottom: 4px; }
+  .champion-name { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: white; }
+  .championship-label { font-family: 'Bebas Neue', sans-serif; font-size: 12px; letter-spacing: 0.12em; color: var(--orange); text-align: center; margin-bottom: 4px; }
+
+  /* ── SAVE BAR ── */
+  .save-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--ink); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; z-index: 200; border-top: 2px solid var(--orange); gap: 12px; }
+  .save-bar-text { color: rgba(255,255,255,0.7); font-size: 13px; white-space: nowrap; }
   .save-bar-text strong { color: white; }
-  .save-btn { background: var(--orange); color: white; border: none; padding: 10px 28px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; border-radius: 3px; cursor: pointer; transition: all 0.15s; }
+  .save-btn { background: var(--orange); color: white; border: none; padding: 10px 28px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; border-radius: 3px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
   .save-btn:hover { background: var(--orange-dim); }
   .save-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .saved-badge { background: var(--green); color: white; padding: 10px 20px; border-radius: 3px; font-size: 13px; font-weight: 600; }
-  .leaderboard-page { max-width: 680px; margin: 0 auto; padding: 40px 20px 80px; }
+  .saved-badge { background: var(--green); color: white; padding: 10px 20px; border-radius: 3px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+
+  /* ── LEADERBOARD ── */
+  .leaderboard-page { max-width: 680px; margin: 0 auto; padding: 32px 16px 80px; }
   .lb-title { font-family: 'Bebas Neue', sans-serif; font-size: 40px; color: var(--ink); margin-bottom: 4px; }
-  .lb-meta { font-size: 13px; color: var(--mid); margin-bottom: 32px; display: flex; align-items: center; gap: 8px; }
-  .live-dot { width: 8px; height: 8px; background: var(--green); border-radius: 50%; animation: pulse 2s infinite; }
+  .lb-meta { font-size: 13px; color: var(--mid); margin-bottom: 28px; display: flex; align-items: center; gap: 8px; }
+  .live-dot { width: 8px; height: 8px; background: var(--green); border-radius: 50%; animation: pulse 2s infinite; flex-shrink: 0; }
   @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
   .lb-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 8px; transition: all 0.12s; }
   .lb-card:hover { border-color: var(--orange); box-shadow: var(--shadow); }
   .lb-card.me { border-color: var(--orange); background: #fff8f5; }
   .lb-row { display: flex; align-items: center; padding: 14px 18px; gap: 14px; }
-  .lb-rank { font-family: 'Bebas Neue', sans-serif; font-size: 24px; color: var(--mid); min-width: 32px; text-align: center; }
+  .lb-rank { font-family: 'Bebas Neue', sans-serif; font-size: 26px; color: var(--mid); min-width: 32px; text-align: center; }
   .lb-rank.top { color: var(--orange); }
-  .lb-avatar { width: 38px; height: 38px; background: var(--ink); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: white; flex-shrink: 0; }
+  .lb-avatar { width: 40px; height: 40px; background: var(--ink); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: white; flex-shrink: 0; }
   .lb-avatar.me-av { background: var(--orange); }
-  .lb-info { flex: 1; }
-  .lb-name { font-weight: 600; font-size: 14px; }
-  .lb-detail { font-size: 12px; color: var(--mid); margin-top: 1px; }
-  .lb-score { text-align: right; }
-  .lb-pts { font-family: 'Bebas Neue', sans-serif; font-size: 28px; line-height: 1; }
+  .lb-info { flex: 1; min-width: 0; }
+  .lb-name { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lb-detail { font-size: 12px; color: var(--mid); margin-top: 2px; }
+  .lb-score { text-align: right; flex-shrink: 0; }
+  .lb-pts { font-family: 'Bebas Neue', sans-serif; font-size: 30px; line-height: 1; }
   .lb-pts-label { font-size: 10px; color: var(--mid); text-transform: uppercase; letter-spacing: 0.08em; }
   .lb-bar-wrap { padding: 0 18px 14px; }
   .lb-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
   .lb-bar-fill { height: 100%; background: var(--orange); border-radius: 2px; transition: width 0.6s ease; }
   .lb-empty { text-align: center; padding: 60px 20px; color: var(--mid); font-size: 14px; }
-  .toast { position: fixed; top: 72px; right: 20px; background: var(--ink); color: white; padding: 12px 20px; border-radius: 4px; font-size: 13px; font-weight: 500; border-left: 3px solid var(--orange); z-index: 999; animation: slideIn 0.2s ease; }
+
+  /* ── TOAST ── */
+  .toast { position: fixed; top: 72px; right: 20px; background: var(--ink); color: white; padding: 12px 20px; border-radius: 4px; font-size: 13px; font-weight: 500; border-left: 3px solid var(--orange); z-index: 999; animation: slideIn 0.2s ease; max-width: calc(100vw - 40px); }
   @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
   .loading { display: flex; align-items: center; justify-content: center; height: 100vh; font-family: 'Bebas Neue', sans-serif; font-size: 24px; color: var(--orange); letter-spacing: 0.1em; }
-  .admin-page { max-width: 720px; margin: 0 auto; padding: 40px 20px 80px; }
+
+  /* ── ADMIN ── */
+  .admin-page { max-width: 720px; margin: 0 auto; padding: 32px 16px 80px; }
   .admin-title { font-family: 'Bebas Neue', sans-serif; font-size: 40px; color: var(--ink); margin-bottom: 4px; }
   .admin-meta { font-size: 13px; color: var(--mid); margin-bottom: 24px; }
   .admin-espn-btn { display: flex; align-items: center; gap: 10px; background: var(--orange); color: white; border: none; padding: 14px 28px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 700; border-radius: 4px; cursor: pointer; margin-bottom: 12px; transition: all 0.15s; width: 100%; justify-content: center; }
@@ -309,12 +349,12 @@ const css = `
   .admin-rescore-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .admin-group { margin-bottom: 24px; }
   .admin-group-label { font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 0.08em; color: var(--orange); margin-bottom: 8px; }
-  .admin-game { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
-  .admin-game-teams { flex: 1; font-size: 13px; font-weight: 500; }
-  .admin-pick-btn { padding: 5px 12px; font-size: 12px; font-weight: 600; font-family: 'DM Sans', sans-serif; border-radius: 3px; cursor: pointer; border: 1.5px solid var(--border); background: white; color: var(--ink); transition: all 0.12s; }
+  .admin-game { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .admin-game-teams { flex: 1; font-size: 13px; font-weight: 500; min-width: 120px; }
+  .admin-pick-btn { padding: 6px 12px; font-size: 12px; font-weight: 600; font-family: 'DM Sans', sans-serif; border-radius: 3px; cursor: pointer; border: 1.5px solid var(--border); background: white; color: var(--ink); transition: all 0.12s; }
   .admin-pick-btn:hover { border-color: var(--orange); color: var(--orange); }
   .admin-pick-btn.winner { background: var(--green); border-color: var(--green); color: white; }
-  .admin-winner-display { font-size: 12px; color: var(--green); font-weight: 600; min-width: 100px; }
+  .admin-winner-display { font-size: 12px; color: var(--green); font-weight: 600; }
 `;
 
 const getInitials = (name) => name?.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() || "?";
@@ -328,8 +368,6 @@ const countPicks = (b) => {
   return count;
 };
 
-// ── RESULT STATUS for a team in a given round ──
-// returns 'correct', 'eliminated', or 'pending'
 const getTeamStatus = (teamName, roundIdx, winnersByRound, losersByRound) => {
   if (!teamName) return 'pending';
   const rw = winnersByRound[roundIdx];
@@ -339,9 +377,14 @@ const getTeamStatus = (teamName, roundIdx, winnersByRound, losersByRound) => {
   return 'pending';
 };
 
-const TeamSlot = ({ team, selected, onClick, style, status }) => {
+// ── TEAM SLOT with live score support ──
+const TeamSlot = ({ team, selected, onClick, style, status, liveScore }) => {
   if (!team) return <div className="team-slot empty" style={style}>—</div>;
-  const statusClass = status === 'correct' ? ' correct' : status === 'eliminated' ? ' eliminated' : selected ? ' selected' : '';
+  const isLive = liveScore !== undefined;
+  const statusClass = status === 'correct' ? ' correct'
+    : status === 'eliminated' ? ' eliminated'
+    : isLive ? ' live-game'
+    : selected ? ' selected' : '';
   return (
     <div
       className={`team-slot${statusClass}`}
@@ -351,13 +394,14 @@ const TeamSlot = ({ team, selected, onClick, style, status }) => {
     >
       <span className="seed-badge">{team.seed}</span>
       <span className="team-name">{team.name}</span>
-      {status === 'correct' && <span className="result-badge correct">✓</span>}
-      {status === 'eliminated' && <span className="result-badge eliminated">✗</span>}
+      {isLive && <span className="live-score">{liveScore}</span>}
+      {!isLive && status === 'correct' && <span className="result-badge correct">✓</span>}
+      {!isLive && status === 'eliminated' && <span className="result-badge eliminated">✗</span>}
     </div>
   );
 };
 
-const RegionBracket = ({ region, bracket, onPick, flipped, winnersByRound, losersByRound }) => {
+const RegionBracket = ({ region, bracket, onPick, flipped, winnersByRound, losersByRound, liveScores }) => {
   const rounds = bracket[region].rounds;
   const buildMatchups = (rt) => { const m = []; for (let i = 0; i < rt.length; i += 2) m.push([rt[i], rt[i+1]]); return m; };
   return (
@@ -366,26 +410,23 @@ const RegionBracket = ({ region, bracket, onPick, flipped, winnersByRound, loser
       <div className="rounds-row" style={{ flexDirection: flipped ? "row-reverse" : "row" }}>
         {rounds.slice(0, 4).map((roundTeams, ri) => {
           const matchups = buildMatchups(roundTeams);
-          const spacing = Math.pow(2, ri) * 8;
-          // ri=0 is R64 display (round 0), picks in rounds[1] are scored in round 1
-          // To show status on a team in rounds[ri], we check if they won/lost round ri
+          const spacing = Math.pow(2, ri) * 9;
           return (
-            <div key={ri} className="round-col" style={{ minWidth: ri === 3 ? 120 : 110 }}>
+            <div key={ri} className="round-col">
               {matchups.map((pair, mi) => (
                 <div key={mi} className="matchup" style={{ marginTop: mi === 0 ? spacing/2 : spacing, marginBottom: spacing/2 }}>
                   {pair.map((team, ti) => {
-                    // For round ri (display), status is determined by round ri results
-                    // rounds[0] = starting teams, status = did they win round 1?
-                    // rounds[1] = R32 picks, status = did they win round 2?
-                    const statusRound = ri + 1; // round they need to win to still be alive
+                    const statusRound = ri + 1;
                     const status = team ? getTeamStatus(team.name, statusRound, winnersByRound, losersByRound) : 'pending';
                     const isSelected = rounds[ri+1]?.[mi]?.name === team?.name;
+                    const liveScore = team ? liveScores[team.name] : undefined;
                     return (
                       <TeamSlot
                         key={ti}
                         team={team}
-                        selected={isSelected && status === 'pending'}
+                        selected={isSelected && status === 'pending' && !liveScore}
                         status={isSelected ? status : (status === 'eliminated' ? 'eliminated' : 'pending')}
+                        liveScore={liveScore}
                         onClick={() => team && status !== 'eliminated' && onPick(region, ri, mi, ti)}
                       />
                     );
@@ -470,9 +511,7 @@ const AdminPanel = ({ onToast }) => {
     setFetching(true);
     setFetchResult(null);
     try {
-      const res = await fetch(
-        'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=100&dates=20260317-20260406'
-      );
+      const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=100&dates=20260317-20260406');
       const data = await res.json();
       const events = data.events || [];
       const completedGames = events
@@ -499,7 +538,6 @@ const AdminPanel = ({ onToast }) => {
         setFetching(false);
         return;
       }
-
       await supabase.from('results').upsert(completedGames, { onConflict: 'espn_game_id' });
       const newMap = { ...gameWinners };
       completedGames.forEach((g) => { newMap[g.espn_game_id] = g.winner; });
@@ -580,6 +618,9 @@ export default function App() {
   const [totalPicks, setTotalPicks] = useState(0);
   const [winnersByRound, setWinnersByRound] = useState({});
   const [losersByRound, setLosersByRound] = useState({});
+  const [liveScores, setLiveScores] = useState({}); // { teamName: "42" }
+  const [liveGames, setLiveGames] = useState([]); // [{ home, away, homeScore, awayScore, clock, period }]
+  const liveIntervalRef = useRef(null);
 
   useEffect(() => {
     const style = document.createElement("style"); style.textContent = css; document.head.appendChild(style);
@@ -592,21 +633,18 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Load results for visual indicators
+  // ── Load results for bracket indicators ──
   useEffect(() => {
     const loadResults = async () => {
       const { data } = await supabase.from('results').select('*').eq('completed', true);
       if (!data) return;
       const wbr = {};
       const lbr = {};
-      // For each round, build winners and losers sets
-      // We know each game has a winner — the loser is the other team
       data.forEach((r) => {
         if (!r.round) return;
         if (!wbr[r.round]) wbr[r.round] = new Set();
         if (!lbr[r.round]) lbr[r.round] = new Set();
         wbr[r.round].add(r.winner);
-        // loser is whichever of home/away is not the winner
         const loser = r.home_team === r.winner ? r.away_team : r.home_team;
         if (loser) lbr[r.round].add(loser);
       });
@@ -614,11 +652,49 @@ export default function App() {
       setLosersByRound(lbr);
     };
     loadResults();
-    // Subscribe to results changes
     const ch = supabase.channel('results-watch')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'results' }, loadResults)
       .subscribe();
     return () => supabase.removeChannel(ch);
+  }, []);
+
+  // ── Live scores polling every 60 seconds ──
+  const fetchLiveScores = async () => {
+    try {
+      const res = await fetch('https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=100');
+      const data = await res.json();
+      const events = data.events || [];
+      const scores = {};
+      const games = [];
+      events
+        .filter((e) => !e.status.type.completed && e.status.type.state === 'in')
+        .forEach((e) => {
+          const comp = e.competitions[0];
+          const home = comp.competitors.find((c) => c.homeAway === 'home');
+          const away = comp.competitors.find((c) => c.homeAway === 'away');
+          if (!home || !away) return;
+          const homeName = normalize(home.team.shortDisplayName);
+          const awayName = normalize(away.team.shortDisplayName);
+          const homeScore = home.score || '0';
+          const awayScore = away.score || '0';
+          const clock = e.status.displayClock;
+          const period = e.status.period;
+          const periodStr = period === 1 ? '1st' : period === 2 ? '2nd' : `OT`;
+          scores[homeName] = homeScore;
+          scores[awayName] = awayScore;
+          games.push({ home: homeName, away: awayName, homeScore, awayScore, clock, period: periodStr });
+        });
+      setLiveScores(scores);
+      setLiveGames(games);
+    } catch (e) {
+      // silent fail — live scores are nice to have
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveScores();
+    liveIntervalRef.current = setInterval(fetchLiveScores, 60000);
+    return () => clearInterval(liveIntervalRef.current);
   }, []);
 
   const loadBracket = async (uid) => {
@@ -703,20 +779,17 @@ export default function App() {
             <button className={`nav-btn${tab === "leaderboard" ? " active" : ""}`} onClick={() => setTab("leaderboard")}>Leaderboard</button>
           </div>
           <div className="topbar-user">
-            <span>{userName}</span>
+            <span className="name">{userName}</span>
             <div className="avatar">{getInitials(userName)}</div>
             <button className="signout-btn" onClick={handleSignOut}>Sign out</button>
           </div>
         </div>
-        {tab === "bracket" && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "calc(100vh - 56px)" }}>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 48, marginBottom: 8 }}>Bracket Pending</div>
-              <div style={{ color: "var(--mid)", fontSize: 14 }}>Check back after Selection Sunday.</div>
-            </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "calc(100vh - 56px)" }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 48, marginBottom: 8 }}>Bracket Pending</div>
+            <div style={{ color: "var(--mid)", fontSize: 14 }}>Check back after Selection Sunday.</div>
           </div>
-        )}
-        {tab === "leaderboard" && <Leaderboard currentUserId={session.user.id} />}
+        </div>
       </div>
     );
   }
@@ -732,7 +805,7 @@ export default function App() {
           {isAdmin && <button className={`nav-btn admin-btn${tab === "admin" ? " active" : ""}`} onClick={() => setTab("admin")}>⚙ Admin</button>}
         </div>
         <div className="topbar-user">
-          <span>{userName}</span>
+          <span className="name">{userName}</span>
           <div className="avatar">{getInitials(userName)}</div>
           <button className="signout-btn" onClick={handleSignOut}>Sign out</button>
         </div>
@@ -744,26 +817,37 @@ export default function App() {
             <div className="bracket-title">Your Bracket</div>
             <div className="bracket-meta">2026 NCAA Tournament · <span className="picks-count">{totalPicks}</span> picks made · {63 - totalPicks} remaining</div>
             <div className="bracket-legend">
-              <div className="legend-item"><div className="legend-dot correct"></div><span>Correct pick ✓</span></div>
+              <div className="legend-item"><div className="legend-dot correct"></div><span>Correct ✓</span></div>
               <div className="legend-item"><div className="legend-dot eliminated"></div><span>Eliminated ✗</span></div>
+              {liveGames.length > 0 && <div className="legend-item"><div className="legend-dot live"></div><span>Live score</span></div>}
             </div>
+            {liveGames.length > 0 && (
+              <div className="live-games-bar">
+                {liveGames.map((g, i) => (
+                  <div key={i} className="live-game-chip">
+                    <span className="live-pip" />
+                    {g.away} {g.awayScore} – {g.homeScore} {g.home} · {g.clock} {g.period}
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="bracket-layout">
               <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-                <RegionBracket region="East" bracket={bracket} onPick={handlePick} flipped={false} winnersByRound={winnersByRound} losersByRound={losersByRound} />
-                <RegionBracket region="South" bracket={bracket} onPick={handlePick} flipped={false} winnersByRound={winnersByRound} losersByRound={losersByRound} />
+                <RegionBracket region="East" bracket={bracket} onPick={handlePick} flipped={false} winnersByRound={winnersByRound} losersByRound={losersByRound} liveScores={liveScores} />
+                <RegionBracket region="South" bracket={bracket} onPick={handlePick} flipped={false} winnersByRound={winnersByRound} losersByRound={losersByRound} liveScores={liveScores} />
               </div>
               <div className="final-four-center">
                 <div className="ff-section-label">Semifinal 1</div>
                 <div className="ff-matchup">
-                  <TeamSlot team={eastWinner} selected={bracket.semi1Winner?.name === eastWinner?.name} style={{ minWidth: 150 }} onClick={() => eastWinner && pickSemi1(eastWinner)} status={eastWinner ? getTeamStatus(eastWinner.name, 5, winnersByRound, losersByRound) : 'pending'} />
+                  <TeamSlot team={eastWinner} selected={bracket.semi1Winner?.name === eastWinner?.name} style={{ minWidth: 160 }} onClick={() => eastWinner && pickSemi1(eastWinner)} status={eastWinner ? getTeamStatus(eastWinner.name, 5, winnersByRound, losersByRound) : 'pending'} liveScore={eastWinner ? liveScores[eastWinner.name] : undefined} />
                   <div className="vs-divider">VS</div>
-                  <TeamSlot team={southWinner} selected={bracket.semi1Winner?.name === southWinner?.name} style={{ minWidth: 150 }} onClick={() => southWinner && pickSemi1(southWinner)} status={southWinner ? getTeamStatus(southWinner.name, 5, winnersByRound, losersByRound) : 'pending'} />
+                  <TeamSlot team={southWinner} selected={bracket.semi1Winner?.name === southWinner?.name} style={{ minWidth: 160 }} onClick={() => southWinner && pickSemi1(southWinner)} status={southWinner ? getTeamStatus(southWinner.name, 5, winnersByRound, losersByRound) : 'pending'} liveScore={southWinner ? liveScores[southWinner.name] : undefined} />
                 </div>
                 <div className="championship-label">🏆 Championship</div>
                 <div className="ff-matchup">
-                  <TeamSlot team={bracket.semi1Winner} selected={bracket.champion?.name === bracket.semi1Winner?.name} style={{ minWidth: 150 }} onClick={() => bracket.semi1Winner && pickChampion(bracket.semi1Winner)} status={bracket.semi1Winner ? getTeamStatus(bracket.semi1Winner.name, 6, winnersByRound, losersByRound) : 'pending'} />
+                  <TeamSlot team={bracket.semi1Winner} selected={bracket.champion?.name === bracket.semi1Winner?.name} style={{ minWidth: 160 }} onClick={() => bracket.semi1Winner && pickChampion(bracket.semi1Winner)} status={bracket.semi1Winner ? getTeamStatus(bracket.semi1Winner.name, 6, winnersByRound, losersByRound) : 'pending'} liveScore={bracket.semi1Winner ? liveScores[bracket.semi1Winner.name] : undefined} />
                   <div className="vs-divider">VS</div>
-                  <TeamSlot team={bracket.semi2Winner} selected={bracket.champion?.name === bracket.semi2Winner?.name} style={{ minWidth: 150 }} onClick={() => bracket.semi2Winner && pickChampion(bracket.semi2Winner)} status={bracket.semi2Winner ? getTeamStatus(bracket.semi2Winner.name, 6, winnersByRound, losersByRound) : 'pending'} />
+                  <TeamSlot team={bracket.semi2Winner} selected={bracket.champion?.name === bracket.semi2Winner?.name} style={{ minWidth: 160 }} onClick={() => bracket.semi2Winner && pickChampion(bracket.semi2Winner)} status={bracket.semi2Winner ? getTeamStatus(bracket.semi2Winner.name, 6, winnersByRound, losersByRound) : 'pending'} liveScore={bracket.semi2Winner ? liveScores[bracket.semi2Winner.name] : undefined} />
                 </div>
                 <div className="champion-slot">
                   <div className="champion-label">🏆 Champion</div>
@@ -771,20 +855,20 @@ export default function App() {
                 </div>
                 <div className="ff-section-label">Semifinal 2</div>
                 <div className="ff-matchup">
-                  <TeamSlot team={westWinner} selected={bracket.semi2Winner?.name === westWinner?.name} style={{ minWidth: 150 }} onClick={() => westWinner && pickSemi2(westWinner)} status={westWinner ? getTeamStatus(westWinner.name, 5, winnersByRound, losersByRound) : 'pending'} />
+                  <TeamSlot team={westWinner} selected={bracket.semi2Winner?.name === westWinner?.name} style={{ minWidth: 160 }} onClick={() => westWinner && pickSemi2(westWinner)} status={westWinner ? getTeamStatus(westWinner.name, 5, winnersByRound, losersByRound) : 'pending'} liveScore={westWinner ? liveScores[westWinner.name] : undefined} />
                   <div className="vs-divider">VS</div>
-                  <TeamSlot team={midwestWinner} selected={bracket.semi2Winner?.name === midwestWinner?.name} style={{ minWidth: 150 }} onClick={() => midwestWinner && pickSemi2(midwestWinner)} status={midwestWinner ? getTeamStatus(midwestWinner.name, 5, winnersByRound, losersByRound) : 'pending'} />
+                  <TeamSlot team={midwestWinner} selected={bracket.semi2Winner?.name === midwestWinner?.name} style={{ minWidth: 160 }} onClick={() => midwestWinner && pickSemi2(midwestWinner)} status={midwestWinner ? getTeamStatus(midwestWinner.name, 5, winnersByRound, losersByRound) : 'pending'} liveScore={midwestWinner ? liveScores[midwestWinner.name] : undefined} />
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-                <RegionBracket region="West" bracket={bracket} onPick={handlePick} flipped={true} winnersByRound={winnersByRound} losersByRound={losersByRound} />
-                <RegionBracket region="Midwest" bracket={bracket} onPick={handlePick} flipped={true} winnersByRound={winnersByRound} losersByRound={losersByRound} />
+                <RegionBracket region="West" bracket={bracket} onPick={handlePick} flipped={true} winnersByRound={winnersByRound} losersByRound={losersByRound} liveScores={liveScores} />
+                <RegionBracket region="Midwest" bracket={bracket} onPick={handlePick} flipped={true} winnersByRound={winnersByRound} losersByRound={losersByRound} liveScores={liveScores} />
               </div>
             </div>
           </div>
           <div className="save-bar">
             <div className="save-bar-text"><strong>{totalPicks} picks</strong> made · {63 - totalPicks} remaining</div>
-            {saved ? <div className="saved-badge">✓ Bracket Saved</div> : (
+            {saved ? <div className="saved-badge">✓ Saved</div> : (
               <button className="save-btn" onClick={handleSave} disabled={totalPicks === 0 || saving}>
                 {saving ? "Saving..." : "Save Bracket"}
               </button>
