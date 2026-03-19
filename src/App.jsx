@@ -48,7 +48,7 @@ const TEAMS = {
 };
 
 // ── ADMIN EMAIL — only this user sees the Admin tab ──
-const ADMIN_EMAIL = "steven.sparacino@bolagency.com";
+const ADMIN_EMAIL = "steven.sparacino@bol-agency.com";
 
 const BRACKET_PENDING = false;
 
