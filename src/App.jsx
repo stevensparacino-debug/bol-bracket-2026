@@ -381,7 +381,7 @@ const AdminPanel = ({ onToast }) => {
     setFetchResult(null);
     try {
       const res = await fetch(
-        'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=100'
+        'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=100&dates=20260317-20260320'
       );
       const data = await res.json();
       const events = data.events || [];
