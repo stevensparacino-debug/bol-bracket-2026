@@ -52,14 +52,38 @@ const ADMIN_EMAIL = "steven.sparacino@bolagency.com";
 
 const BRACKET_PENDING = false;
 
-// All 63 tournament matchups for manual admin scoring
+// ESPN name → our bracket name
+const NAME_MAP = {
+  'North Carolina': 'N. Carolina',
+  'Northern Iowa': 'N. Iowa',
+  'North Dakota St': 'N. Dakota St.',
+  'N Dakota St': 'N. Dakota St.',
+  'Michigan State': 'Michigan St.',
+  'Kennesaw St': 'Kennesaw St.',
+  'Tennessee State': 'Tennessee St.',
+  'Tennessee St': 'Tennessee St.',
+  'Long Island': 'LIU',
+  "Saint Mary's": "St. Mary's",
+  "St Mary's": "St. Mary's",
+  'Howard': 'UMBC/Howard',
+  'Texas': 'TX/NC State',
+  'SMU': 'MiamiOH/SMU',
+  'Miami OH': 'MiamiOH/SMU',
+  'Miami (OH)': 'MiamiOH/SMU',
+  'Lehigh': 'PVA&M/Lehigh',
+  'Prairie View': 'PVA&M/Lehigh',
+  'Prairie View A&M': 'PVA&M/Lehigh',
+  'Miami': 'Miami FL',
+  'California Baptist': 'Cal Baptist',
+  'Saint Louis': 'Saint Louis',
+};
+const normalize = (name) => NAME_MAP[name] || name;
+
 const ALL_MATCHUPS = [
-  // First Four
   { id: "ff1", round: 0, label: "First Four", team1: "UMBC/Howard", team2: "Howard/UMBC" },
   { id: "ff2", round: 0, label: "First Four", team1: "TX/NC State", team2: "NC State/Texas" },
   { id: "ff3", round: 0, label: "First Four", team1: "PVA&M/Lehigh", team2: "Lehigh/PVA&M" },
   { id: "ff4", round: 0, label: "First Four", team1: "MiamiOH/SMU", team2: "SMU/MiamiOH" },
-  // East R64
   { id: "e1", round: 1, label: "East R64", team1: "Duke", team2: "Siena" },
   { id: "e2", round: 1, label: "East R64", team1: "Ohio State", team2: "TCU" },
   { id: "e3", round: 1, label: "East R64", team1: "St. John's", team2: "N. Iowa" },
@@ -68,7 +92,6 @@ const ALL_MATCHUPS = [
   { id: "e6", round: 1, label: "East R64", team1: "Michigan St.", team2: "N. Dakota St." },
   { id: "e7", round: 1, label: "East R64", team1: "UCLA", team2: "UCF" },
   { id: "e8", round: 1, label: "East R64", team1: "UConn", team2: "Furman" },
-  // West R64
   { id: "w1", round: 1, label: "West R64", team1: "Arizona", team2: "LIU" },
   { id: "w2", round: 1, label: "West R64", team1: "Villanova", team2: "Utah State" },
   { id: "w3", round: 1, label: "West R64", team1: "Wisconsin", team2: "High Point" },
@@ -77,7 +100,6 @@ const ALL_MATCHUPS = [
   { id: "w6", round: 1, label: "West R64", team1: "Gonzaga", team2: "Kennesaw St." },
   { id: "w7", round: 1, label: "West R64", team1: "Miami FL", team2: "Missouri" },
   { id: "w8", round: 1, label: "West R64", team1: "Purdue", team2: "Queens" },
-  // South R64
   { id: "s1", round: 1, label: "South R64", team1: "Florida", team2: "PVA&M/Lehigh" },
   { id: "s2", round: 1, label: "South R64", team1: "Clemson", team2: "Iowa" },
   { id: "s3", round: 1, label: "South R64", team1: "Vanderbilt", team2: "McNeese" },
@@ -86,7 +108,6 @@ const ALL_MATCHUPS = [
   { id: "s6", round: 1, label: "South R64", team1: "Illinois", team2: "Penn" },
   { id: "s7", round: 1, label: "South R64", team1: "St. Mary's", team2: "Texas A&M" },
   { id: "s8", round: 1, label: "South R64", team1: "Houston", team2: "Idaho" },
-  // Midwest R64
   { id: "m1", round: 1, label: "Midwest R64", team1: "Michigan", team2: "UMBC/Howard" },
   { id: "m2", round: 1, label: "Midwest R64", team1: "Georgia", team2: "Saint Louis" },
   { id: "m3", round: 1, label: "Midwest R64", team1: "Texas Tech", team2: "Akron" },
@@ -213,11 +234,18 @@ const css = `
   .toast { position: fixed; top: 72px; right: 20px; background: var(--ink); color: white; padding: 12px 20px; border-radius: 4px; font-size: 13px; font-weight: 500; border-left: 3px solid var(--orange); z-index: 999; animation: slideIn 0.2s ease; }
   @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
   .loading { display: flex; align-items: center; justify-content: center; height: 100vh; font-family: 'Bebas Neue', sans-serif; font-size: 24px; color: var(--orange); letter-spacing: 0.1em; }
-  /* ── ADMIN PANEL ── */
   .admin-page { max-width: 720px; margin: 0 auto; padding: 40px 20px 80px; }
   .admin-title { font-family: 'Bebas Neue', sans-serif; font-size: 40px; color: var(--ink); margin-bottom: 4px; }
-  .admin-meta { font-size: 13px; color: var(--mid); margin-bottom: 8px; }
-  .admin-note { font-size: 12px; color: var(--mid); background: #fff8f0; border: 1.5px solid var(--border); border-radius: 4px; padding: 10px 14px; margin-bottom: 28px; }
+  .admin-meta { font-size: 13px; color: var(--mid); margin-bottom: 24px; }
+  .admin-espn-btn { display: flex; align-items: center; gap: 10px; background: var(--orange); color: white; border: none; padding: 14px 28px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 700; border-radius: 4px; cursor: pointer; margin-bottom: 12px; transition: all 0.15s; width: 100%; justify-content: center; }
+  .admin-espn-btn:hover { background: var(--orange-dim); }
+  .admin-espn-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .admin-espn-result { font-size: 13px; padding: 10px 14px; border-radius: 4px; margin-bottom: 24px; font-weight: 500; }
+  .admin-espn-result.success { background: #eafaf1; color: #1a7a40; border: 1.5px solid #a8e6c0; }
+  .admin-espn-result.error { background: #fdf0f0; color: #a00; border: 1.5px solid #f5c0c0; }
+  .admin-divider { border: none; border-top: 1.5px solid var(--border); margin: 28px 0; }
+  .admin-manual-label { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--mid); margin-bottom: 6px; }
+  .admin-manual-note { font-size: 12px; color: var(--mid); margin-bottom: 20px; }
   .admin-rescore-btn { background: var(--ink); color: white; border: none; padding: 10px 24px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600; border-radius: 3px; cursor: pointer; margin-bottom: 28px; transition: all 0.15s; }
   .admin-rescore-btn:hover { background: var(--orange); }
   .admin-rescore-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -241,8 +269,6 @@ const countPicks = (b) => {
   if (b.champion) count++;
   return count;
 };
-
-const ROUND_POINTS = [1, 1, 2, 4, 8, 8, 16]; // index = round
 
 const TeamSlot = ({ team, selected, onClick, style }) => {
   if (!team) return <div className="team-slot empty" style={style}>—</div>;
@@ -332,11 +358,12 @@ const Leaderboard = ({ currentUserId }) => {
 
 // ── ADMIN PANEL ──
 const AdminPanel = ({ onToast }) => {
+  const [fetching, setFetching] = useState(false);
+  const [fetchResult, setFetchResult] = useState(null);
   const [gameWinners, setGameWinners] = useState({});
   const [rescoring, setRescoring] = useState(false);
 
   useEffect(() => {
-    // Load existing results from DB
     const load = async () => {
       const { data } = await supabase.from("results").select("*");
       if (data) {
@@ -348,9 +375,86 @@ const AdminPanel = ({ onToast }) => {
     load();
   }, []);
 
+  // ── ESPN FETCH + SCORE — runs entirely client-side ──
+  const fetchESPNAndScore = async () => {
+    setFetching(true);
+    setFetchResult(null);
+    try {
+      const res = await fetch(
+        'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=100'
+      );
+      const data = await res.json();
+      const events = data.events || [];
+
+      const completedGames = events
+        .filter((e) => e.status.type.completed)
+        .map((e) => {
+          const comp = e.competitions[0];
+          const winner = comp.competitors.find((c) => c.winner);
+          const rawWinner = winner?.team.shortDisplayName || null;
+          return {
+            espn_game_id: e.id,
+            home_team: normalize(comp.competitors.find((c) => c.homeAway === 'home')?.team.shortDisplayName),
+            away_team: normalize(comp.competitors.find((c) => c.homeAway === 'away')?.team.shortDisplayName),
+            winner: rawWinner ? normalize(rawWinner) : null,
+            game_date: e.date,
+            completed: true,
+          };
+        })
+        .filter((g) => g.winner);
+
+      if (completedGames.length === 0) {
+        setFetchResult({ type: 'error', msg: 'No completed games found from ESPN right now.' });
+        setFetching(false);
+        return;
+      }
+
+      // Write to results table
+      await supabase.from('results').upsert(completedGames, { onConflict: 'espn_game_id' });
+
+      // Update local gameWinners state
+      const newMap = { ...gameWinners };
+      completedGames.forEach((g) => { newMap[g.espn_game_id] = g.winner; });
+      setGameWinners(newMap);
+
+      // Rescore all brackets
+      const { data: brackets } = await supabase.from('brackets').select('*');
+      const { data: results } = await supabase.from('results').select('*').eq('completed', true);
+      const winners = new Set(results?.map((r) => r.winner) || []);
+
+      for (const bracket of brackets || []) {
+        let score = 0;
+        const picks = bracket.picks;
+        if (!picks) continue;
+
+        for (const region of ['East', 'West', 'South', 'Midwest']) {
+          const rounds = picks[region]?.rounds || [];
+          rounds.slice(1).forEach((round, ri) => {
+            const points = Math.pow(2, ri);
+            round.forEach((team) => { if (team && winners.has(team.name)) score += points; });
+          });
+        }
+        if (picks.semi1Winner && winners.has(picks.semi1Winner.name)) score += 8;
+        if (picks.semi2Winner && winners.has(picks.semi2Winner.name)) score += 8;
+        if (picks.champion && winners.has(picks.champion.name)) score += 16;
+
+        await supabase.from('brackets').update({ score }).eq('user_id', bracket.user_id);
+      }
+
+      setFetchResult({
+        type: 'success',
+        msg: `✓ Pulled ${completedGames.length} completed games · Updated ${brackets?.length} brackets · Winners: ${[...winners].join(', ')}`
+      });
+      onToast(`✓ Scores updated! ${completedGames.length} games processed.`);
+
+    } catch (e) {
+      setFetchResult({ type: 'error', msg: `Error: ${e.message}` });
+    }
+    setFetching(false);
+  };
+
   const setWinner = async (matchup, winner) => {
-    const updated = { ...gameWinners, [matchup.id]: winner };
-    setGameWinners(updated);
+    setGameWinners((prev) => ({ ...prev, [matchup.id]: winner }));
     await supabase.from("results").upsert({
       espn_game_id: matchup.id,
       home_team: matchup.team1,
@@ -372,7 +476,6 @@ const AdminPanel = ({ onToast }) => {
         let score = 0;
         const picks = bracket.picks;
         if (!picks) continue;
-
         for (const region of ["East", "West", "South", "Midwest"]) {
           const rounds = picks[region]?.rounds || [];
           rounds.slice(1).forEach((round, ri) => {
@@ -383,17 +486,15 @@ const AdminPanel = ({ onToast }) => {
         if (picks.semi1Winner && winners.has(picks.semi1Winner.name)) score += 8;
         if (picks.semi2Winner && winners.has(picks.semi2Winner.name)) score += 8;
         if (picks.champion && winners.has(picks.champion.name)) score += 16;
-
         await supabase.from("brackets").update({ score }).eq("user_id", bracket.user_id);
       }
       onToast(`✓ Rescored ${brackets?.length} brackets`);
     } catch (e) {
-      onToast("Error rescoring — check console");
+      onToast("Error rescoring — try again");
     }
     setRescoring(false);
   };
 
-  // Group matchups by label
   const groups = ALL_MATCHUPS.reduce((acc, m) => {
     if (!acc[m.label]) acc[m.label] = [];
     acc[m.label].push(m);
@@ -403,10 +504,21 @@ const AdminPanel = ({ onToast }) => {
   return (
     <div className="admin-page">
       <div className="admin-title">Admin Panel</div>
-      <div className="admin-meta">Only visible to you · Manual scoring fallback</div>
-      <div className="admin-note">
-        Use this if ESPN auto-scoring isn't working. Click the winning team for each completed game, then hit Rescore to update the leaderboard.
-      </div>
+      <div className="admin-meta">Only visible to you</div>
+
+      {/* ── PRIMARY: ESPN AUTO FETCH ── */}
+      <button className="admin-espn-btn" onClick={fetchESPNAndScore} disabled={fetching}>
+        {fetching ? "⏳ Fetching ESPN & Scoring..." : "🏀 Fetch ESPN Scores & Update Leaderboard"}
+      </button>
+      {fetchResult && (
+        <div className={`admin-espn-result ${fetchResult.type}`}>{fetchResult.msg}</div>
+      )}
+
+      <hr className="admin-divider" />
+
+      {/* ── FALLBACK: MANUAL ENTRY ── */}
+      <div className="admin-manual-label">Manual Fallback</div>
+      <div className="admin-manual-note">If ESPN fetch isn't working, click winners manually then hit Rescore.</div>
       <button className="admin-rescore-btn" onClick={rescoreAll} disabled={rescoring}>
         {rescoring ? "Rescoring..." : "⚡ Rescore All Brackets Now"}
       </button>
@@ -416,17 +528,11 @@ const AdminPanel = ({ onToast }) => {
           {matchups.map((m) => (
             <div key={m.id} className="admin-game">
               <div className="admin-game-teams">{m.team1} vs {m.team2}</div>
-              <button
-                className={`admin-pick-btn${gameWinners[m.id] === m.team1 ? " winner" : ""}`}
-                onClick={() => setWinner(m, m.team1)}
-              >{m.team1}</button>
-              <button
-                className={`admin-pick-btn${gameWinners[m.id] === m.team2 ? " winner" : ""}`}
-                onClick={() => setWinner(m, m.team2)}
-              >{m.team2}</button>
-              {gameWinners[m.id] && (
-                <div className="admin-winner-display">✓ {gameWinners[m.id]}</div>
-              )}
+              <button className={`admin-pick-btn${gameWinners[m.id] === m.team1 ? " winner" : ""}`}
+                onClick={() => setWinner(m, m.team1)}>{m.team1}</button>
+              <button className={`admin-pick-btn${gameWinners[m.id] === m.team2 ? " winner" : ""}`}
+                onClick={() => setWinner(m, m.team2)}>{m.team2}</button>
+              {gameWinners[m.id] && <div className="admin-winner-display">✓ {gameWinners[m.id]}</div>}
             </div>
           ))}
         </div>
@@ -501,7 +607,6 @@ export default function App() {
   const southWinner = bracket.South.rounds[4][0];
   const westWinner = bracket.West.rounds[4][0];
   const midwestWinner = bracket.Midwest.rounds[4][0];
-
   const isAdmin = session?.user?.email === ADMIN_EMAIL;
 
   if (authLoading) return <div className="loading">BOL MADNESS</div>;
@@ -512,7 +617,7 @@ export default function App() {
         <div className="landing-inner">
           <div className="landing-eyebrow">BOL Agency · 2026</div>
           <div className="landing-title">MARCH<br /><span>MADNESS</span></div>
-          <div className="landing-sub">The bracket is live. Sign in and make your picks before Tuesday March 17 at noon ET.</div>
+          <div className="landing-sub">The bracket is live. Sign in and make your picks.</div>
           <div className="timeline">
             <TimelineItem date="Sun Mar 15" desc="Selection Sunday — bracket revealed" status="done" />
             <TimelineItem date="Tue Mar 17" desc="First Four · Dayton, OH" status="done" />
@@ -545,11 +650,10 @@ export default function App() {
           </div>
         </div>
         {tab === "bracket" && (
-          <div className="pending-page">
-            <div className="pending-inner">
-              <div className="pending-badge">⏳ Coming Soon</div>
-              <div className="pending-title">Bracket Pending</div>
-              <div className="pending-sub">Check back after Selection Sunday to fill out your picks.</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "calc(100vh - 56px)" }}>
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 48, marginBottom: 8 }}>Bracket Pending</div>
+              <div style={{ color: "var(--mid)", fontSize: 14 }}>Check back after Selection Sunday.</div>
             </div>
           </div>
         )}
