@@ -3,7 +3,6 @@ import { supabase } from "./supabase.js";
 
 const REGIONS = ["East", "West", "South", "Midwest"];
 
-// ── 2026 NCAA TOURNAMENT — Selection Sunday March 15 ──
 const TEAMS = {
   East: [
     { seed: 1,  name: "Duke" },           { seed: 16, name: "Siena" },
@@ -47,12 +46,9 @@ const TEAMS = {
   ],
 };
 
-// ── ADMIN EMAIL — only this user sees the Admin tab ──
 const ADMIN_EMAIL = "steven.sparacino@bol-agency.com";
-
 const BRACKET_PENDING = false;
 
-// ESPN name → our bracket name
 const NAME_MAP = {
   'North Carolina': 'N. Carolina',
   'Northern Iowa': 'N. Iowa',
@@ -78,6 +74,41 @@ const NAME_MAP = {
   'Saint Louis': 'Saint Louis',
 };
 const normalize = (name) => NAME_MAP[name] || name;
+
+// ── SCORING FUNCTION — used in both ESPN fetch and manual rescore ──
+const scoreAllBrackets = async (onToast) => {
+  const { data: brackets } = await supabase.from('brackets').select('*');
+  const { data: results } = await supabase.from('results').select('*').eq('completed', true);
+  const winners = new Set(results?.map((r) => r.winner) || []);
+
+  for (const bracket of brackets || []) {
+    let score = 0;
+    const picks = bracket.picks;
+    if (!picks) continue;
+
+    for (const region of ['East', 'West', 'South', 'Midwest']) {
+      const rounds = picks[region]?.rounds || [];
+      // rounds[1] = R64 winners picked to advance = 1pt each
+      // rounds[2] = R32 winners = 2pts each
+      // rounds[3] = S16 winners = 4pts each
+      // rounds[4] = E8 winners = 8pts each
+      for (let roundIdx = 1; roundIdx <= 4; roundIdx++) {
+        const pts = Math.pow(2, roundIdx - 1);
+        (rounds[roundIdx] || []).forEach((team) => {
+          if (team && winners.has(team.name)) score += pts;
+        });
+      }
+    }
+
+    if (picks.semi1Winner && winners.has(picks.semi1Winner.name)) score += 8;
+    if (picks.semi2Winner && winners.has(picks.semi2Winner.name)) score += 8;
+    if (picks.champion && winners.has(picks.champion.name)) score += 16;
+
+    await supabase.from('brackets').update({ score }).eq('user_id', bracket.user_id);
+  }
+
+  return { brackets, winners };
+};
 
 const ALL_MATCHUPS = [
   { id: "ff1", round: 0, label: "First Four", team1: "UMBC/Howard", team2: "Howard/UMBC" },
@@ -356,7 +387,6 @@ const Leaderboard = ({ currentUserId }) => {
   );
 };
 
-// ── ADMIN PANEL ──
 const AdminPanel = ({ onToast }) => {
   const [fetching, setFetching] = useState(false);
   const [fetchResult, setFetchResult] = useState(null);
@@ -375,13 +405,12 @@ const AdminPanel = ({ onToast }) => {
     load();
   }, []);
 
-  // ── ESPN FETCH + SCORE — runs entirely client-side ──
   const fetchESPNAndScore = async () => {
     setFetching(true);
     setFetchResult(null);
     try {
       const res = await fetch(
-        'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=100&dates=20260317-20260320'
+        'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=100&dates=20260317-20260406'
       );
       const data = await res.json();
       const events = data.events || [];
@@ -409,41 +438,17 @@ const AdminPanel = ({ onToast }) => {
         return;
       }
 
-      // Write to results table
       await supabase.from('results').upsert(completedGames, { onConflict: 'espn_game_id' });
 
-      // Update local gameWinners state
       const newMap = { ...gameWinners };
       completedGames.forEach((g) => { newMap[g.espn_game_id] = g.winner; });
       setGameWinners(newMap);
 
-      // Rescore all brackets
-      const { data: brackets } = await supabase.from('brackets').select('*');
-      const { data: results } = await supabase.from('results').select('*').eq('completed', true);
-      const winners = new Set(results?.map((r) => r.winner) || []);
-
-      for (const bracket of brackets || []) {
-        let score = 0;
-        const picks = bracket.picks;
-        if (!picks) continue;
-
-        for (const region of ['East', 'West', 'South', 'Midwest']) {
-          const rounds = picks[region]?.rounds || [];
-          rounds.slice(1).forEach((round, ri) => {
-            const points = Math.pow(2, ri);
-            round.forEach((team) => { if (team && winners.has(team.name)) score += points; });
-          });
-        }
-        if (picks.semi1Winner && winners.has(picks.semi1Winner.name)) score += 8;
-        if (picks.semi2Winner && winners.has(picks.semi2Winner.name)) score += 8;
-        if (picks.champion && winners.has(picks.champion.name)) score += 16;
-
-        await supabase.from('brackets').update({ score }).eq('user_id', bracket.user_id);
-      }
+      const { brackets, winners } = await scoreAllBrackets();
 
       setFetchResult({
         type: 'success',
-        msg: `✓ Pulled ${completedGames.length} completed games · Updated ${brackets?.length} brackets · Winners: ${[...winners].join(', ')}`
+        msg: `✓ ${completedGames.length} games · ${brackets?.length} brackets updated · Winners: ${[...winners].join(', ')}`
       });
       onToast(`✓ Scores updated! ${completedGames.length} games processed.`);
 
@@ -465,29 +470,10 @@ const AdminPanel = ({ onToast }) => {
     }, { onConflict: "espn_game_id" });
   };
 
-  const rescoreAll = async () => {
+  const handleRescoreAll = async () => {
     setRescoring(true);
     try {
-      const { data: brackets } = await supabase.from("brackets").select("*");
-      const { data: results } = await supabase.from("results").select("*").eq("completed", true);
-      const winners = new Set(results?.map((r) => r.winner) || []);
-
-      for (const bracket of brackets || []) {
-        let score = 0;
-        const picks = bracket.picks;
-        if (!picks) continue;
-        for (const region of ["East", "West", "South", "Midwest"]) {
-          const rounds = picks[region]?.rounds || [];
-          rounds.slice(1).forEach((round, ri) => {
-            const points = Math.pow(2, ri);
-            round.forEach((team) => { if (team && winners.has(team.name)) score += points; });
-          });
-        }
-        if (picks.semi1Winner && winners.has(picks.semi1Winner.name)) score += 8;
-        if (picks.semi2Winner && winners.has(picks.semi2Winner.name)) score += 8;
-        if (picks.champion && winners.has(picks.champion.name)) score += 16;
-        await supabase.from("brackets").update({ score }).eq("user_id", bracket.user_id);
-      }
+      const { brackets } = await scoreAllBrackets();
       onToast(`✓ Rescored ${brackets?.length} brackets`);
     } catch (e) {
       onToast("Error rescoring — try again");
@@ -505,21 +491,14 @@ const AdminPanel = ({ onToast }) => {
     <div className="admin-page">
       <div className="admin-title">Admin Panel</div>
       <div className="admin-meta">Only visible to you</div>
-
-      {/* ── PRIMARY: ESPN AUTO FETCH ── */}
       <button className="admin-espn-btn" onClick={fetchESPNAndScore} disabled={fetching}>
         {fetching ? "⏳ Fetching ESPN & Scoring..." : "🏀 Fetch ESPN Scores & Update Leaderboard"}
       </button>
-      {fetchResult && (
-        <div className={`admin-espn-result ${fetchResult.type}`}>{fetchResult.msg}</div>
-      )}
-
+      {fetchResult && <div className={`admin-espn-result ${fetchResult.type}`}>{fetchResult.msg}</div>}
       <hr className="admin-divider" />
-
-      {/* ── FALLBACK: MANUAL ENTRY ── */}
       <div className="admin-manual-label">Manual Fallback</div>
-      <div className="admin-manual-note">If ESPN fetch isn't working, click winners manually then hit Rescore.</div>
-      <button className="admin-rescore-btn" onClick={rescoreAll} disabled={rescoring}>
+      <div className="admin-manual-note">Click winners manually then hit Rescore.</div>
+      <button className="admin-rescore-btn" onClick={handleRescoreAll} disabled={rescoring}>
         {rescoring ? "Rescoring..." : "⚡ Rescore All Brackets Now"}
       </button>
       {Object.entries(groups).map(([label, matchups]) => (
