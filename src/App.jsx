@@ -49,17 +49,13 @@ const TEAMS = {
 const ADMIN_EMAIL = "steven.sparacino@bol-agency.com";
 const BRACKET_PENDING = false;
 
-// ESPN round detection based on number of teams remaining
-// ESPN uses a "groups=100" scoreboard — we detect round by game count
-// Round 1 (R64) = 32 games, Round 2 (R32) = 16, Sweet 16 = 8, Elite 8 = 4, FF = 2, Champ = 1
-// We detect round from the notes field or just track by date ranges
 const ROUND_BY_DATE = [
-  { round: 1, start: '2026-03-19', end: '2026-03-20', pts: 1 },  // R64
-  { round: 2, start: '2026-03-21', end: '2026-03-22', pts: 2 },  // R32
-  { round: 3, start: '2026-03-26', end: '2026-03-27', pts: 4 },  // S16
-  { round: 4, start: '2026-03-28', end: '2026-03-29', pts: 8 },  // E8
-  { round: 5, start: '2026-04-04', end: '2026-04-04', pts: 8 },  // FF
-  { round: 6, start: '2026-04-06', end: '2026-04-06', pts: 16 }, // Championship
+  { round: 1, start: '2026-03-19', end: '2026-03-20', pts: 1 },
+  { round: 2, start: '2026-03-21', end: '2026-03-22', pts: 2 },
+  { round: 3, start: '2026-03-26', end: '2026-03-27', pts: 4 },
+  { round: 4, start: '2026-03-28', end: '2026-03-29', pts: 8 },
+  { round: 5, start: '2026-04-04', end: '2026-04-04', pts: 8 },
+  { round: 6, start: '2026-04-06', end: '2026-04-06', pts: 16 },
 ];
 
 const getRoundInfo = (gameDateStr) => {
@@ -67,7 +63,7 @@ const getRoundInfo = (gameDateStr) => {
   for (const r of ROUND_BY_DATE) {
     if (gameDate >= r.start && gameDate <= r.end) return r;
   }
-  return null; // First Four — not scored
+  return null;
 };
 
 const NAME_MAP = {
@@ -96,34 +92,21 @@ const NAME_MAP = {
 };
 const normalize = (name) => NAME_MAP[name] || name;
 
-// ── SCORING: round-aware ──
-// results rows now have a `round` field (1=R64, 2=R32, 3=S16, 4=E8, 5=FF, 6=Champ)
-// picks.rounds[1] = teams picked to win R64 (score in round 1)
-// picks.rounds[2] = teams picked to win R32 (score in round 2)
-// etc.
 const scoreAllBrackets = async () => {
   const { data: brackets } = await supabase.from('brackets').select('*');
   const { data: results } = await supabase.from('results').select('*').eq('completed', true);
-
-  // Build a map: { round -> Set of winners }
   const winnersByRound = {};
   for (const r of results || []) {
     if (!r.round) continue;
     if (!winnersByRound[r.round]) winnersByRound[r.round] = new Set();
     winnersByRound[r.round].add(r.winner);
   }
-
   for (const bracket of brackets || []) {
     let score = 0;
     const picks = bracket.picks;
     if (!picks) continue;
-
     for (const region of ['East', 'West', 'South', 'Midwest']) {
       const rounds = picks[region]?.rounds || [];
-      // rounds[1] = picked R64 winners → score against round 1 results (1pt)
-      // rounds[2] = picked R32 winners → score against round 2 results (2pt)
-      // rounds[3] = picked S16 winners → score against round 3 results (4pt)
-      // rounds[4] = picked E8 winners  → score against round 4 results (8pt)
       for (let roundIdx = 1; roundIdx <= 4; roundIdx++) {
         const roundWinners = winnersByRound[roundIdx] || new Set();
         const pts = Math.pow(2, roundIdx - 1);
@@ -132,19 +115,13 @@ const scoreAllBrackets = async () => {
         });
       }
     }
-
-    // Final Four semis = round 5, 8pts each
     const r5 = winnersByRound[5] || new Set();
     if (picks.semi1Winner && r5.has(picks.semi1Winner.name)) score += 8;
     if (picks.semi2Winner && r5.has(picks.semi2Winner.name)) score += 8;
-
-    // Championship = round 6, 16pts
     const r6 = winnersByRound[6] || new Set();
     if (picks.champion && r6.has(picks.champion.name)) score += 16;
-
     await supabase.from('brackets').update({ score }).eq('user_id', bracket.user_id);
   }
-
   return { brackets, winnersByRound };
 };
 
@@ -247,18 +224,30 @@ const css = `
   .signout-btn:hover { border-color: rgba(255,255,255,0.5); color: white; }
   .bracket-page { padding: 32px 16px 100px; overflow-x: auto; }
   .bracket-title { font-family: 'Bebas Neue', sans-serif; font-size: 36px; color: var(--ink); margin-bottom: 4px; }
-  .bracket-meta { font-size: 13px; color: var(--mid); margin-bottom: 32px; }
+  .bracket-meta { font-size: 13px; color: var(--mid); margin-bottom: 16px; }
   .picks-count { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--orange); }
+  .bracket-legend { display: flex; gap: 16px; margin-bottom: 24px; font-size: 11px; color: var(--mid); }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+  .legend-dot.correct { background: #e8f8ef; border: 1.5px solid var(--green); }
+  .legend-dot.eliminated { background: #f5f0eb; border: 1.5px solid #c8c0b8; }
   .bracket-layout { display: flex; gap: 0; min-width: 1100px; align-items: center; justify-content: center; }
   .region-block { flex: 1; }
   .region-label { font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 0.08em; color: var(--orange); text-align: center; margin-bottom: 12px; }
   .rounds-row { display: flex; gap: 0; }
   .round-col { display: flex; flex-direction: column; justify-content: space-around; min-width: 110px; padding: 0 3px; }
   .matchup { display: flex; flex-direction: column; gap: 2px; margin: 4px 0; }
-  .team-slot { display: flex; align-items: center; gap: 5px; padding: 5px 7px; background: var(--surface); border: 1.5px solid var(--border); border-radius: 3px; cursor: pointer; transition: all 0.12s; min-height: 30px; font-size: 11px; font-weight: 500; color: var(--ink); user-select: none; overflow: hidden; }
-  .team-slot:hover:not(.empty) { border-color: var(--orange); background: #fff5f0; }
+  .team-slot { display: flex; align-items: center; gap: 5px; padding: 5px 7px; background: var(--surface); border: 1.5px solid var(--border); border-radius: 3px; cursor: pointer; transition: all 0.12s; min-height: 30px; font-size: 11px; font-weight: 500; color: var(--ink); user-select: none; overflow: hidden; position: relative; }
+  .team-slot:hover:not(.empty):not(.eliminated) { border-color: var(--orange); background: #fff5f0; }
   .team-slot.selected { background: var(--orange); border-color: var(--orange); color: white; }
+  .team-slot.correct { background: #e8f8ef !important; border-color: var(--green) !important; color: var(--ink) !important; }
+  .team-slot.correct .seed-badge { color: var(--green) !important; }
+  .team-slot.eliminated { background: #f5f0eb; border-color: #c8c0b8; color: #b0a898; cursor: default; }
+  .team-slot.eliminated .team-name { text-decoration: line-through; opacity: 0.6; }
   .team-slot.empty { background: #f5f0eb; border-color: #e0d8d0; cursor: default; }
+  .result-badge { font-size: 9px; font-weight: 700; margin-left: auto; flex-shrink: 0; }
+  .result-badge.correct { color: var(--green); }
+  .result-badge.eliminated { color: #b0a898; }
   .seed-badge { font-size: 9px; font-weight: 700; color: var(--mid); min-width: 14px; }
   .team-slot.selected .seed-badge { color: rgba(255,255,255,0.7); }
   .team-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10.5px; }
@@ -339,17 +328,36 @@ const countPicks = (b) => {
   return count;
 };
 
-const TeamSlot = ({ team, selected, onClick, style }) => {
+// ── RESULT STATUS for a team in a given round ──
+// returns 'correct', 'eliminated', or 'pending'
+const getTeamStatus = (teamName, roundIdx, winnersByRound, losersByRound) => {
+  if (!teamName) return 'pending';
+  const rw = winnersByRound[roundIdx];
+  const rl = losersByRound[roundIdx];
+  if (rw && rw.has(teamName)) return 'correct';
+  if (rl && rl.has(teamName)) return 'eliminated';
+  return 'pending';
+};
+
+const TeamSlot = ({ team, selected, onClick, style, status }) => {
   if (!team) return <div className="team-slot empty" style={style}>—</div>;
+  const statusClass = status === 'correct' ? ' correct' : status === 'eliminated' ? ' eliminated' : selected ? ' selected' : '';
   return (
-    <div className={`team-slot${selected ? " selected" : ""}`} onClick={onClick} title={team.name} style={style}>
+    <div
+      className={`team-slot${statusClass}`}
+      onClick={() => status !== 'eliminated' && onClick && onClick()}
+      title={team.name}
+      style={style}
+    >
       <span className="seed-badge">{team.seed}</span>
       <span className="team-name">{team.name}</span>
+      {status === 'correct' && <span className="result-badge correct">✓</span>}
+      {status === 'eliminated' && <span className="result-badge eliminated">✗</span>}
     </div>
   );
 };
 
-const RegionBracket = ({ region, bracket, onPick, flipped }) => {
+const RegionBracket = ({ region, bracket, onPick, flipped, winnersByRound, losersByRound }) => {
   const rounds = bracket[region].rounds;
   const buildMatchups = (rt) => { const m = []; for (let i = 0; i < rt.length; i += 2) m.push([rt[i], rt[i+1]]); return m; };
   return (
@@ -359,14 +367,29 @@ const RegionBracket = ({ region, bracket, onPick, flipped }) => {
         {rounds.slice(0, 4).map((roundTeams, ri) => {
           const matchups = buildMatchups(roundTeams);
           const spacing = Math.pow(2, ri) * 8;
+          // ri=0 is R64 display (round 0), picks in rounds[1] are scored in round 1
+          // To show status on a team in rounds[ri], we check if they won/lost round ri
           return (
             <div key={ri} className="round-col" style={{ minWidth: ri === 3 ? 120 : 110 }}>
               {matchups.map((pair, mi) => (
                 <div key={mi} className="matchup" style={{ marginTop: mi === 0 ? spacing/2 : spacing, marginBottom: spacing/2 }}>
-                  {pair.map((team, ti) => (
-                    <TeamSlot key={ti} team={team} selected={rounds[ri+1]?.[mi]?.name === team?.name}
-                      onClick={() => team && onPick(region, ri, mi, ti)} />
-                  ))}
+                  {pair.map((team, ti) => {
+                    // For round ri (display), status is determined by round ri results
+                    // rounds[0] = starting teams, status = did they win round 1?
+                    // rounds[1] = R32 picks, status = did they win round 2?
+                    const statusRound = ri + 1; // round they need to win to still be alive
+                    const status = team ? getTeamStatus(team.name, statusRound, winnersByRound, losersByRound) : 'pending';
+                    const isSelected = rounds[ri+1]?.[mi]?.name === team?.name;
+                    return (
+                      <TeamSlot
+                        key={ti}
+                        team={team}
+                        selected={isSelected && status === 'pending'}
+                        status={isSelected ? status : (status === 'eliminated' ? 'eliminated' : 'pending')}
+                        onClick={() => team && status !== 'eliminated' && onPick(region, ri, mi, ti)}
+                      />
+                    );
+                  })}
                 </div>
               ))}
             </div>
@@ -452,7 +475,6 @@ const AdminPanel = ({ onToast }) => {
       );
       const data = await res.json();
       const events = data.events || [];
-
       const completedGames = events
         .filter((e) => e.status.type.completed)
         .map((e) => {
@@ -470,29 +492,22 @@ const AdminPanel = ({ onToast }) => {
             completed: true,
           };
         })
-        .filter((g) => g.winner && g.round !== null); // skip First Four (round=null)
+        .filter((g) => g.winner && g.round !== null);
 
       if (completedGames.length === 0) {
-        setFetchResult({ type: 'error', msg: 'No completed scoreable games yet. First Four games don\'t count for points.' });
+        setFetchResult({ type: 'error', msg: "No completed scoreable games yet." });
         setFetching(false);
         return;
       }
 
       await supabase.from('results').upsert(completedGames, { onConflict: 'espn_game_id' });
-
       const newMap = { ...gameWinners };
       completedGames.forEach((g) => { newMap[g.espn_game_id] = g.winner; });
       setGameWinners(newMap);
-
       const { brackets, winnersByRound } = await scoreAllBrackets();
-
       const allWinners = Object.values(winnersByRound).flatMap(s => [...s]);
-      setFetchResult({
-        type: 'success',
-        msg: `✓ ${completedGames.length} games · ${brackets?.length} brackets updated · Winners: ${allWinners.join(', ')}`
-      });
+      setFetchResult({ type: 'success', msg: `✓ ${completedGames.length} games · ${brackets?.length} brackets updated · Winners: ${allWinners.join(', ')}` });
       onToast(`✓ Scores updated! ${completedGames.length} games processed.`);
-
     } catch (e) {
       setFetchResult({ type: 'error', msg: `Error: ${e.message}` });
     }
@@ -502,13 +517,9 @@ const AdminPanel = ({ onToast }) => {
   const setWinner = async (matchup, winner) => {
     setGameWinners((prev) => ({ ...prev, [matchup.id]: winner }));
     await supabase.from("results").upsert({
-      espn_game_id: matchup.id,
-      round: matchup.round,
-      home_team: matchup.team1,
-      away_team: matchup.team2,
-      winner,
-      completed: true,
-      game_date: new Date().toISOString(),
+      espn_game_id: matchup.id, round: matchup.round,
+      home_team: matchup.team1, away_team: matchup.team2,
+      winner, completed: true, game_date: new Date().toISOString(),
     }, { onConflict: "espn_game_id" });
   };
 
@@ -517,9 +528,7 @@ const AdminPanel = ({ onToast }) => {
     try {
       const { brackets } = await scoreAllBrackets();
       onToast(`✓ Rescored ${brackets?.length} brackets`);
-    } catch (e) {
-      onToast("Error rescoring — try again");
-    }
+    } catch (e) { onToast("Error rescoring — try again"); }
     setRescoring(false);
   };
 
@@ -549,10 +558,8 @@ const AdminPanel = ({ onToast }) => {
           {matchups.map((m) => (
             <div key={m.id} className="admin-game">
               <div className="admin-game-teams">{m.team1} vs {m.team2}</div>
-              <button className={`admin-pick-btn${gameWinners[m.id] === m.team1 ? " winner" : ""}`}
-                onClick={() => setWinner(m, m.team1)}>{m.team1}</button>
-              <button className={`admin-pick-btn${gameWinners[m.id] === m.team2 ? " winner" : ""}`}
-                onClick={() => setWinner(m, m.team2)}>{m.team2}</button>
+              <button className={`admin-pick-btn${gameWinners[m.id] === m.team1 ? " winner" : ""}`} onClick={() => setWinner(m, m.team1)}>{m.team1}</button>
+              <button className={`admin-pick-btn${gameWinners[m.id] === m.team2 ? " winner" : ""}`} onClick={() => setWinner(m, m.team2)}>{m.team2}</button>
               {gameWinners[m.id] && <div className="admin-winner-display">✓ {gameWinners[m.id]}</div>}
             </div>
           ))}
@@ -571,6 +578,8 @@ export default function App() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
   const [totalPicks, setTotalPicks] = useState(0);
+  const [winnersByRound, setWinnersByRound] = useState({});
+  const [losersByRound, setLosersByRound] = useState({});
 
   useEffect(() => {
     const style = document.createElement("style"); style.textContent = css; document.head.appendChild(style);
@@ -581,6 +590,35 @@ export default function App() {
     supabase.auth.getSession().then(({ data: { session } }) => { setSession(session); setAuthLoading(false); if (session) loadBracket(session.user.id); });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => { setSession(session); if (session) loadBracket(session.user.id); });
     return () => subscription.unsubscribe();
+  }, []);
+
+  // Load results for visual indicators
+  useEffect(() => {
+    const loadResults = async () => {
+      const { data } = await supabase.from('results').select('*').eq('completed', true);
+      if (!data) return;
+      const wbr = {};
+      const lbr = {};
+      // For each round, build winners and losers sets
+      // We know each game has a winner — the loser is the other team
+      data.forEach((r) => {
+        if (!r.round) return;
+        if (!wbr[r.round]) wbr[r.round] = new Set();
+        if (!lbr[r.round]) lbr[r.round] = new Set();
+        wbr[r.round].add(r.winner);
+        // loser is whichever of home/away is not the winner
+        const loser = r.home_team === r.winner ? r.away_team : r.home_team;
+        if (loser) lbr[r.round].add(loser);
+      });
+      setWinnersByRound(wbr);
+      setLosersByRound(lbr);
+    };
+    loadResults();
+    // Subscribe to results changes
+    const ch = supabase.channel('results-watch')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'results' }, loadResults)
+      .subscribe();
+    return () => supabase.removeChannel(ch);
   }, []);
 
   const loadBracket = async (uid) => {
@@ -705,23 +743,27 @@ export default function App() {
           <div className="bracket-page">
             <div className="bracket-title">Your Bracket</div>
             <div className="bracket-meta">2026 NCAA Tournament · <span className="picks-count">{totalPicks}</span> picks made · {63 - totalPicks} remaining</div>
+            <div className="bracket-legend">
+              <div className="legend-item"><div className="legend-dot correct"></div><span>Correct pick ✓</span></div>
+              <div className="legend-item"><div className="legend-dot eliminated"></div><span>Eliminated ✗</span></div>
+            </div>
             <div className="bracket-layout">
               <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-                <RegionBracket region="East" bracket={bracket} onPick={handlePick} flipped={false} />
-                <RegionBracket region="South" bracket={bracket} onPick={handlePick} flipped={false} />
+                <RegionBracket region="East" bracket={bracket} onPick={handlePick} flipped={false} winnersByRound={winnersByRound} losersByRound={losersByRound} />
+                <RegionBracket region="South" bracket={bracket} onPick={handlePick} flipped={false} winnersByRound={winnersByRound} losersByRound={losersByRound} />
               </div>
               <div className="final-four-center">
                 <div className="ff-section-label">Semifinal 1</div>
                 <div className="ff-matchup">
-                  <TeamSlot team={eastWinner} selected={bracket.semi1Winner?.name === eastWinner?.name} style={{ minWidth: 150 }} onClick={() => eastWinner && pickSemi1(eastWinner)} />
+                  <TeamSlot team={eastWinner} selected={bracket.semi1Winner?.name === eastWinner?.name} style={{ minWidth: 150 }} onClick={() => eastWinner && pickSemi1(eastWinner)} status={eastWinner ? getTeamStatus(eastWinner.name, 5, winnersByRound, losersByRound) : 'pending'} />
                   <div className="vs-divider">VS</div>
-                  <TeamSlot team={southWinner} selected={bracket.semi1Winner?.name === southWinner?.name} style={{ minWidth: 150 }} onClick={() => southWinner && pickSemi1(southWinner)} />
+                  <TeamSlot team={southWinner} selected={bracket.semi1Winner?.name === southWinner?.name} style={{ minWidth: 150 }} onClick={() => southWinner && pickSemi1(southWinner)} status={southWinner ? getTeamStatus(southWinner.name, 5, winnersByRound, losersByRound) : 'pending'} />
                 </div>
                 <div className="championship-label">🏆 Championship</div>
                 <div className="ff-matchup">
-                  <TeamSlot team={bracket.semi1Winner} selected={bracket.champion?.name === bracket.semi1Winner?.name} style={{ minWidth: 150 }} onClick={() => bracket.semi1Winner && pickChampion(bracket.semi1Winner)} />
+                  <TeamSlot team={bracket.semi1Winner} selected={bracket.champion?.name === bracket.semi1Winner?.name} style={{ minWidth: 150 }} onClick={() => bracket.semi1Winner && pickChampion(bracket.semi1Winner)} status={bracket.semi1Winner ? getTeamStatus(bracket.semi1Winner.name, 6, winnersByRound, losersByRound) : 'pending'} />
                   <div className="vs-divider">VS</div>
-                  <TeamSlot team={bracket.semi2Winner} selected={bracket.champion?.name === bracket.semi2Winner?.name} style={{ minWidth: 150 }} onClick={() => bracket.semi2Winner && pickChampion(bracket.semi2Winner)} />
+                  <TeamSlot team={bracket.semi2Winner} selected={bracket.champion?.name === bracket.semi2Winner?.name} style={{ minWidth: 150 }} onClick={() => bracket.semi2Winner && pickChampion(bracket.semi2Winner)} status={bracket.semi2Winner ? getTeamStatus(bracket.semi2Winner.name, 6, winnersByRound, losersByRound) : 'pending'} />
                 </div>
                 <div className="champion-slot">
                   <div className="champion-label">🏆 Champion</div>
@@ -729,14 +771,14 @@ export default function App() {
                 </div>
                 <div className="ff-section-label">Semifinal 2</div>
                 <div className="ff-matchup">
-                  <TeamSlot team={westWinner} selected={bracket.semi2Winner?.name === westWinner?.name} style={{ minWidth: 150 }} onClick={() => westWinner && pickSemi2(westWinner)} />
+                  <TeamSlot team={westWinner} selected={bracket.semi2Winner?.name === westWinner?.name} style={{ minWidth: 150 }} onClick={() => westWinner && pickSemi2(westWinner)} status={westWinner ? getTeamStatus(westWinner.name, 5, winnersByRound, losersByRound) : 'pending'} />
                   <div className="vs-divider">VS</div>
-                  <TeamSlot team={midwestWinner} selected={bracket.semi2Winner?.name === midwestWinner?.name} style={{ minWidth: 150 }} onClick={() => midwestWinner && pickSemi2(midwestWinner)} />
+                  <TeamSlot team={midwestWinner} selected={bracket.semi2Winner?.name === midwestWinner?.name} style={{ minWidth: 150 }} onClick={() => midwestWinner && pickSemi2(midwestWinner)} status={midwestWinner ? getTeamStatus(midwestWinner.name, 5, winnersByRound, losersByRound) : 'pending'} />
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-                <RegionBracket region="West" bracket={bracket} onPick={handlePick} flipped={true} />
-                <RegionBracket region="Midwest" bracket={bracket} onPick={handlePick} flipped={true} />
+                <RegionBracket region="West" bracket={bracket} onPick={handlePick} flipped={true} winnersByRound={winnersByRound} losersByRound={losersByRound} />
+                <RegionBracket region="Midwest" bracket={bracket} onPick={handlePick} flipped={true} winnersByRound={winnersByRound} losersByRound={losersByRound} />
               </div>
             </div>
           </div>
