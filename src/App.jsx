@@ -49,6 +49,27 @@ const TEAMS = {
 const ADMIN_EMAIL = "steven.sparacino@bol-agency.com";
 const BRACKET_PENDING = false;
 
+// ESPN round detection based on number of teams remaining
+// ESPN uses a "groups=100" scoreboard — we detect round by game count
+// Round 1 (R64) = 32 games, Round 2 (R32) = 16, Sweet 16 = 8, Elite 8 = 4, FF = 2, Champ = 1
+// We detect round from the notes field or just track by date ranges
+const ROUND_BY_DATE = [
+  { round: 1, start: '2026-03-19', end: '2026-03-20', pts: 1 },  // R64
+  { round: 2, start: '2026-03-21', end: '2026-03-22', pts: 2 },  // R32
+  { round: 3, start: '2026-03-26', end: '2026-03-27', pts: 4 },  // S16
+  { round: 4, start: '2026-03-28', end: '2026-03-29', pts: 8 },  // E8
+  { round: 5, start: '2026-04-04', end: '2026-04-04', pts: 8 },  // FF
+  { round: 6, start: '2026-04-06', end: '2026-04-06', pts: 16 }, // Championship
+];
+
+const getRoundInfo = (gameDateStr) => {
+  const gameDate = gameDateStr.substring(0, 10);
+  for (const r of ROUND_BY_DATE) {
+    if (gameDate >= r.start && gameDate <= r.end) return r;
+  }
+  return null; // First Four — not scored
+};
+
 const NAME_MAP = {
   'North Carolina': 'N. Carolina',
   'Northern Iowa': 'N. Iowa',
@@ -75,11 +96,22 @@ const NAME_MAP = {
 };
 const normalize = (name) => NAME_MAP[name] || name;
 
-// ── SCORING FUNCTION — used in both ESPN fetch and manual rescore ──
-const scoreAllBrackets = async (onToast) => {
+// ── SCORING: round-aware ──
+// results rows now have a `round` field (1=R64, 2=R32, 3=S16, 4=E8, 5=FF, 6=Champ)
+// picks.rounds[1] = teams picked to win R64 (score in round 1)
+// picks.rounds[2] = teams picked to win R32 (score in round 2)
+// etc.
+const scoreAllBrackets = async () => {
   const { data: brackets } = await supabase.from('brackets').select('*');
   const { data: results } = await supabase.from('results').select('*').eq('completed', true);
-  const winners = new Set(results?.map((r) => r.winner) || []);
+
+  // Build a map: { round -> Set of winners }
+  const winnersByRound = {};
+  for (const r of results || []) {
+    if (!r.round) continue;
+    if (!winnersByRound[r.round]) winnersByRound[r.round] = new Set();
+    winnersByRound[r.round].add(r.winner);
+  }
 
   for (const bracket of brackets || []) {
     let score = 0;
@@ -88,26 +120,32 @@ const scoreAllBrackets = async (onToast) => {
 
     for (const region of ['East', 'West', 'South', 'Midwest']) {
       const rounds = picks[region]?.rounds || [];
-      // rounds[1] = R64 winners picked to advance = 1pt each
-      // rounds[2] = R32 winners = 2pts each
-      // rounds[3] = S16 winners = 4pts each
-      // rounds[4] = E8 winners = 8pts each
+      // rounds[1] = picked R64 winners → score against round 1 results (1pt)
+      // rounds[2] = picked R32 winners → score against round 2 results (2pt)
+      // rounds[3] = picked S16 winners → score against round 3 results (4pt)
+      // rounds[4] = picked E8 winners  → score against round 4 results (8pt)
       for (let roundIdx = 1; roundIdx <= 4; roundIdx++) {
+        const roundWinners = winnersByRound[roundIdx] || new Set();
         const pts = Math.pow(2, roundIdx - 1);
         (rounds[roundIdx] || []).forEach((team) => {
-          if (team && winners.has(team.name)) score += pts;
+          if (team && roundWinners.has(team.name)) score += pts;
         });
       }
     }
 
-    if (picks.semi1Winner && winners.has(picks.semi1Winner.name)) score += 8;
-    if (picks.semi2Winner && winners.has(picks.semi2Winner.name)) score += 8;
-    if (picks.champion && winners.has(picks.champion.name)) score += 16;
+    // Final Four semis = round 5, 8pts each
+    const r5 = winnersByRound[5] || new Set();
+    if (picks.semi1Winner && r5.has(picks.semi1Winner.name)) score += 8;
+    if (picks.semi2Winner && r5.has(picks.semi2Winner.name)) score += 8;
+
+    // Championship = round 6, 16pts
+    const r6 = winnersByRound[6] || new Set();
+    if (picks.champion && r6.has(picks.champion.name)) score += 16;
 
     await supabase.from('brackets').update({ score }).eq('user_id', bracket.user_id);
   }
 
-  return { brackets, winners };
+  return { brackets, winnersByRound };
 };
 
 const ALL_MATCHUPS = [
@@ -421,8 +459,10 @@ const AdminPanel = ({ onToast }) => {
           const comp = e.competitions[0];
           const winner = comp.competitors.find((c) => c.winner);
           const rawWinner = winner?.team.shortDisplayName || null;
+          const roundInfo = getRoundInfo(e.date);
           return {
             espn_game_id: e.id,
+            round: roundInfo ? roundInfo.round : null,
             home_team: normalize(comp.competitors.find((c) => c.homeAway === 'home')?.team.shortDisplayName),
             away_team: normalize(comp.competitors.find((c) => c.homeAway === 'away')?.team.shortDisplayName),
             winner: rawWinner ? normalize(rawWinner) : null,
@@ -430,10 +470,10 @@ const AdminPanel = ({ onToast }) => {
             completed: true,
           };
         })
-        .filter((g) => g.winner);
+        .filter((g) => g.winner && g.round !== null); // skip First Four (round=null)
 
       if (completedGames.length === 0) {
-        setFetchResult({ type: 'error', msg: 'No completed games found from ESPN right now.' });
+        setFetchResult({ type: 'error', msg: 'No completed scoreable games yet. First Four games don\'t count for points.' });
         setFetching(false);
         return;
       }
@@ -444,11 +484,12 @@ const AdminPanel = ({ onToast }) => {
       completedGames.forEach((g) => { newMap[g.espn_game_id] = g.winner; });
       setGameWinners(newMap);
 
-      const { brackets, winners } = await scoreAllBrackets();
+      const { brackets, winnersByRound } = await scoreAllBrackets();
 
+      const allWinners = Object.values(winnersByRound).flatMap(s => [...s]);
       setFetchResult({
         type: 'success',
-        msg: `✓ ${completedGames.length} games · ${brackets?.length} brackets updated · Winners: ${[...winners].join(', ')}`
+        msg: `✓ ${completedGames.length} games · ${brackets?.length} brackets updated · Winners: ${allWinners.join(', ')}`
       });
       onToast(`✓ Scores updated! ${completedGames.length} games processed.`);
 
@@ -462,6 +503,7 @@ const AdminPanel = ({ onToast }) => {
     setGameWinners((prev) => ({ ...prev, [matchup.id]: winner }));
     await supabase.from("results").upsert({
       espn_game_id: matchup.id,
+      round: matchup.round,
       home_team: matchup.team1,
       away_team: matchup.team2,
       winner,
