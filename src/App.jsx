@@ -19,13 +19,13 @@ const TEAMS = {
     { seed: 8,  name: "Villanova" },      { seed: 9,  name: "Utah State" },
     { seed: 5,  name: "Wisconsin" },      { seed: 12, name: "High Point" },
     { seed: 4,  name: "Arkansas" },       { seed: 13, name: "Hawai'i" },
-    { seed: 6,  name: "BYU" },            { seed: 11, name: "TX/NC State" },
+    { seed: 6,  name: "BYU" },            { seed: 11, name: "Texas" },
     { seed: 3,  name: "Gonzaga" },        { seed: 14, name: "Kennesaw St." },
     { seed: 7,  name: "Miami FL" },       { seed: 10, name: "Missouri" },
     { seed: 2,  name: "Purdue" },         { seed: 15, name: "Queens" },
   ],
   South: [
-    { seed: 1,  name: "Florida" },        { seed: 16, name: "PVA&M/Lehigh" },
+    { seed: 1,  name: "Florida" },        { seed: 16, name: "Prairie View" },
     { seed: 8,  name: "Clemson" },        { seed: 9,  name: "Iowa" },
     { seed: 5,  name: "Vanderbilt" },     { seed: 12, name: "McNeese" },
     { seed: 4,  name: "Nebraska" },       { seed: 13, name: "Troy" },
@@ -35,11 +35,11 @@ const TEAMS = {
     { seed: 2,  name: "Houston" },        { seed: 15, name: "Idaho" },
   ],
   Midwest: [
-    { seed: 1,  name: "Michigan" },       { seed: 16, name: "UMBC/Howard" },
+    { seed: 1,  name: "Michigan" },       { seed: 16, name: "Howard" },
     { seed: 8,  name: "Georgia" },        { seed: 9,  name: "Saint Louis" },
     { seed: 5,  name: "Texas Tech" },     { seed: 12, name: "Akron" },
     { seed: 4,  name: "Alabama" },        { seed: 13, name: "Hofstra" },
-    { seed: 6,  name: "Tennessee" },      { seed: 11, name: "MiamiOH/SMU" },
+    { seed: 6,  name: "Tennessee" },      { seed: 11, name: "SMU" },
     { seed: 3,  name: "Virginia" },       { seed: 14, name: "Wright State" },
     { seed: 7,  name: "Kentucky" },       { seed: 10, name: "Santa Clara" },
     { seed: 2,  name: "Iowa State" },     { seed: 15, name: "Tennessee St." },
@@ -73,10 +73,14 @@ const NAME_MAP = {
   'Michigan State': 'Michigan St.', 'Kennesaw St': 'Kennesaw St.',
   'Tennessee State': 'Tennessee St.', 'Tennessee St': 'Tennessee St.',
   'Long Island': 'LIU', "Saint Mary's": "St. Mary's", "St Mary's": "St. Mary's",
-  'Howard': 'UMBC/Howard', 'Texas': 'TX/NC State', 'SMU': 'MiamiOH/SMU',
-  'Miami OH': 'MiamiOH/SMU', 'Miami (OH)': 'MiamiOH/SMU',
-  'Lehigh': 'PVA&M/Lehigh', 'Prairie View': 'PVA&M/Lehigh',
-  'Prairie View A&M': 'PVA&M/Lehigh', 'Miami': 'Miami FL',
+  // First Four — map ESPN names AND legacy composite names to actual winners
+  'Howard': 'Howard', 'UMBC/Howard': 'Howard',
+  'Texas': 'Texas', 'TX/NC State': 'Texas',
+  'SMU': 'SMU', 'MiamiOH/SMU': 'SMU', 'Miami OH': 'SMU', 'Miami (OH)': 'SMU',
+  'Prairie View': 'Prairie View', 'Prairie View A&M': 'Prairie View',
+  'PVA&M/Lehigh': 'Prairie View', 'Lehigh': 'Prairie View',
+  // Other
+  'Miami': 'Miami FL',
   'California Baptist': 'Cal Baptist', 'Saint Louis': 'Saint Louis',
 };
 const normalize = (name) => NAME_MAP[name] || name;
@@ -115,10 +119,10 @@ const scoreAllBrackets = async () => {
 };
 
 const ALL_MATCHUPS = [
-  { id: "ff1", round: 0, label: "First Four", team1: "UMBC/Howard", team2: "Howard/UMBC" },
-  { id: "ff2", round: 0, label: "First Four", team1: "TX/NC State", team2: "NC State/Texas" },
-  { id: "ff3", round: 0, label: "First Four", team1: "PVA&M/Lehigh", team2: "Lehigh/PVA&M" },
-  { id: "ff4", round: 0, label: "First Four", team1: "MiamiOH/SMU", team2: "SMU/MiamiOH" },
+  { id: "ff1", round: 0, label: "First Four", team1: "Howard", team2: "UMBC" },
+  { id: "ff2", round: 0, label: "First Four", team1: "Texas", team2: "NC State" },
+  { id: "ff3", round: 0, label: "First Four", team1: "Prairie View", team2: "Lehigh" },
+  { id: "ff4", round: 0, label: "First Four", team1: "SMU", team2: "Miami OH" },
   { id: "e1", round: 1, label: "East R64", team1: "Duke", team2: "Siena" },
   { id: "e2", round: 1, label: "East R64", team1: "Ohio State", team2: "TCU" },
   { id: "e3", round: 1, label: "East R64", team1: "St. John's", team2: "N. Iowa" },
@@ -131,11 +135,11 @@ const ALL_MATCHUPS = [
   { id: "w2", round: 1, label: "West R64", team1: "Villanova", team2: "Utah State" },
   { id: "w3", round: 1, label: "West R64", team1: "Wisconsin", team2: "High Point" },
   { id: "w4", round: 1, label: "West R64", team1: "Arkansas", team2: "Hawai'i" },
-  { id: "w5", round: 1, label: "West R64", team1: "BYU", team2: "TX/NC State" },
+  { id: "w5", round: 1, label: "West R64", team1: "BYU", team2: "Texas" },
   { id: "w6", round: 1, label: "West R64", team1: "Gonzaga", team2: "Kennesaw St." },
   { id: "w7", round: 1, label: "West R64", team1: "Miami FL", team2: "Missouri" },
   { id: "w8", round: 1, label: "West R64", team1: "Purdue", team2: "Queens" },
-  { id: "s1", round: 1, label: "South R64", team1: "Florida", team2: "PVA&M/Lehigh" },
+  { id: "s1", round: 1, label: "South R64", team1: "Florida", team2: "Prairie View" },
   { id: "s2", round: 1, label: "South R64", team1: "Clemson", team2: "Iowa" },
   { id: "s3", round: 1, label: "South R64", team1: "Vanderbilt", team2: "McNeese" },
   { id: "s4", round: 1, label: "South R64", team1: "Nebraska", team2: "Troy" },
@@ -143,11 +147,11 @@ const ALL_MATCHUPS = [
   { id: "s6", round: 1, label: "South R64", team1: "Illinois", team2: "Penn" },
   { id: "s7", round: 1, label: "South R64", team1: "St. Mary's", team2: "Texas A&M" },
   { id: "s8", round: 1, label: "South R64", team1: "Houston", team2: "Idaho" },
-  { id: "m1", round: 1, label: "Midwest R64", team1: "Michigan", team2: "UMBC/Howard" },
+  { id: "m1", round: 1, label: "Midwest R64", team1: "Michigan", team2: "Howard" },
   { id: "m2", round: 1, label: "Midwest R64", team1: "Georgia", team2: "Saint Louis" },
   { id: "m3", round: 1, label: "Midwest R64", team1: "Texas Tech", team2: "Akron" },
   { id: "m4", round: 1, label: "Midwest R64", team1: "Alabama", team2: "Hofstra" },
-  { id: "m5", round: 1, label: "Midwest R64", team1: "Tennessee", team2: "MiamiOH/SMU" },
+  { id: "m5", round: 1, label: "Midwest R64", team1: "Tennessee", team2: "SMU" },
   { id: "m6", round: 1, label: "Midwest R64", team1: "Virginia", team2: "Wright State" },
   { id: "m7", round: 1, label: "Midwest R64", team1: "Kentucky", team2: "Santa Clara" },
   { id: "m8", round: 1, label: "Midwest R64", team1: "Iowa State", team2: "Tennessee St." },
@@ -301,8 +305,6 @@ const css = `
     .mobile-tab.active { color: var(--orange); border-bottom-color: var(--orange); }
     .mobile-bracket-view { padding: 16px 12px 40px; }
     .mobile-region-title { font-family: 'Bebas Neue', sans-serif; font-size: 28px; color: var(--orange); margin-bottom: 12px; }
-
-    /* Mobile matchup list — stacked card style */
     .mobile-rounds { display: flex; flex-direction: column; gap: 8px; }
     .mobile-round-header { font-family: 'Bebas Neue', sans-serif; font-size: 13px; letter-spacing: 0.12em; color: var(--mid); text-transform: uppercase; margin: 16px 0 6px; }
     .mobile-matchup-card { background: white; border: 1.5px solid var(--border); border-radius: 6px; overflow: hidden; }
@@ -326,8 +328,6 @@ const css = `
     .mobile-result-badge.correct { color: var(--green); }
     .mobile-result-badge.eliminated { color: #b0a898; }
     .mobile-live-score { font-size: 12px; font-weight: 700; color: var(--orange); margin-left: auto; flex-shrink: 0; }
-
-    /* Mobile Final Four */
     .mobile-ff { padding: 16px 12px 40px; }
     .mobile-ff-title { font-family: 'Bebas Neue', sans-serif; font-size: 28px; color: var(--orange); margin-bottom: 16px; }
     .mobile-ff-section { margin-bottom: 20px; }
@@ -336,8 +336,6 @@ const css = `
     .mobile-champion-card { background: var(--ink); border: 2px solid var(--orange); border-radius: 6px; padding: 16px; text-align: center; margin-bottom: 20px; }
     .mobile-champion-label { font-size: 10px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--orange); margin-bottom: 6px; }
     .mobile-champion-name { font-family: 'Bebas Neue', sans-serif; font-size: 26px; color: white; }
-
-    /* Mobile live chips */
     .mobile-live-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
   }
   @media (min-width: 768px) {
@@ -423,7 +421,6 @@ const getTeamStatus = (teamName, roundIdx, winnersByRound, losersByRound) => {
   return 'pending';
 };
 
-// ── Desktop TeamSlot ──
 const TeamSlot = ({ team, selected, onClick, style, status, liveScore, locked }) => {
   if (!team) return <div className="team-slot empty" style={style}>—</div>;
   const isLive = liveScore !== undefined;
@@ -440,7 +437,6 @@ const TeamSlot = ({ team, selected, onClick, style, status, liveScore, locked })
   );
 };
 
-// ── Desktop Region Bracket ──
 const RegionBracket = ({ region, bracket, onPick, flipped, winnersByRound, losersByRound, liveScores, locked }) => {
   const rounds = bracket[region].rounds;
   const buildMatchups = (rt) => { const m = []; for (let i = 0; i < rt.length; i += 2) m.push([rt[i], rt[i+1]]); return m; };
@@ -478,7 +474,6 @@ const RegionBracket = ({ region, bracket, onPick, flipped, winnersByRound, loser
   );
 };
 
-// ── Mobile Region View (card-based matchup list) ──
 const MobileRegionView = ({ region, bracket, onPick, winnersByRound, losersByRound, liveScores, locked }) => {
   const rounds = bracket[region].rounds;
   return (
@@ -524,7 +519,6 @@ const MobileRegionView = ({ region, bracket, onPick, winnersByRound, losersByRou
   );
 };
 
-// ── Mobile Final Four View ──
 const MobileFinalFour = ({ bracket, pickSemi1, pickSemi2, pickChampion, winnersByRound, losersByRound, liveScores, locked }) => {
   const eastW = bracket.East.rounds[4][0];
   const southW = bracket.South.rounds[4][0];
@@ -898,16 +892,11 @@ export default function App() {
 
       {tab === "bracket" && (
         <>
-          {/* ── MOBILE: region tab bar ── */}
           <div className="mobile-tabs">
             {MOBILE_TABS.map((t) => (
-              <button key={t} className={`mobile-tab${mobileRegion === t ? " active" : ""}`} onClick={() => setMobileRegion(t)}>
-                {t}
-              </button>
+              <button key={t} className={`mobile-tab${mobileRegion === t ? " active" : ""}`} onClick={() => setMobileRegion(t)}>{t}</button>
             ))}
           </div>
-
-          {/* ── MOBILE: live chips ── */}
           {liveGames.length > 0 && (
             <div className="mobile-bracket-view" style={{ paddingBottom: 0, paddingTop: 12 }}>
               <div className="mobile-live-bar">
@@ -920,14 +909,10 @@ export default function App() {
               </div>
             </div>
           )}
-
-          {/* ── MOBILE: region or FF view ── */}
           {mobileRegion !== "FF"
             ? <MobileRegionView region={mobileRegion} {...sharedBracketProps} />
             : <MobileFinalFour bracket={bracket} pickSemi1={pickSemi1} pickSemi2={pickSemi2} pickChampion={pickChampion} winnersByRound={winnersByRound} losersByRound={losersByRound} liveScores={liveScores} locked={BRACKET_LOCKED} />
           }
-
-          {/* ── DESKTOP: full bracket ── */}
           <div className="desktop-bracket">
             <div className="bracket-page">
               <div className="bracket-title">Your Bracket</div>
@@ -983,7 +968,6 @@ export default function App() {
               </div>
             </div>
           </div>
-
           {!BRACKET_LOCKED && (
             <div className="save-bar">
               <div className="save-bar-text"><strong>{totalPicks} picks</strong> made</div>
