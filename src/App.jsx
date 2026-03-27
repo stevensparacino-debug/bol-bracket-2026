@@ -85,6 +85,15 @@ const NAME_MAP = {
 };
 const normalize = (name) => NAME_MAP[name] || name;
 
+// Display-only map — converts legacy composite names in saved picks to clean names
+const DISPLAY_MAP = {
+  'TX/NC State': 'Texas',
+  'UMBC/Howard': 'Howard',
+  'PVA&M/Lehigh': 'Prairie View',
+  'MiamiOH/SMU': 'SMU',
+};
+const displayName = (name) => DISPLAY_MAP[name] || name;
+
 const scoreAllBrackets = async () => {
   const { data: brackets } = await supabase.from('brackets').select('*');
   const { data: results } = await supabase.from('results').select('*').eq('completed', true);
@@ -427,9 +436,9 @@ const TeamSlot = ({ team, selected, onClick, style, status, liveScore, locked })
   const statusClass = status === 'correct' ? ' correct' : status === 'eliminated' ? ' eliminated' : isLive ? ' live-game' : selected ? ' selected' : '';
   return (
     <div className={`team-slot${statusClass}${locked ? ' locked' : ''}`}
-      onClick={() => !locked && status !== 'eliminated' && onClick && onClick()} title={team.name} style={style}>
+      onClick={() => !locked && status !== 'eliminated' && onClick && onClick()} title={displayName(team.name)} style={style}>
       <span className="seed-badge">{team.seed}</span>
-      <span className="team-name">{team.name}</span>
+      <span className="team-name">{displayName(team.name)}</span>
       {isLive && <span className="live-score">{liveScore}</span>}
       {!isLive && status === 'correct' && <span className="result-badge correct">✓</span>}
       {!isLive && status === 'eliminated' && <span className="result-badge eliminated">✗</span>}
@@ -502,7 +511,7 @@ const MobileRegionView = ({ region, bracket, onPick, winnersByRound, losersByRou
                         className={`mobile-team-row ${cls}${locked ? ' locked' : ''}`}
                         onClick={() => !locked && status !== 'eliminated' && onPick(region, ri, mi, ti)}>
                         <span className="seed-badge" style={{ minWidth: 20, fontSize: 11, fontWeight: 700, color: isSelected && !cls.includes('correct') ? 'rgba(255,255,255,0.7)' : 'var(--mid)' }}>{team.seed}</span>
-                        <span className="mobile-team-name">{team.name}</span>
+                        <span className="mobile-team-name">{displayName(team.name)}</span>
                         {isLive && <span className="mobile-live-score">{liveScore}</span>}
                         {!isLive && status === 'correct' && <span className="mobile-result-badge correct">✓</span>}
                         {!isLive && status === 'eliminated' && <span className="mobile-result-badge eliminated">✗</span>}
@@ -535,7 +544,7 @@ const MobileFinalFour = ({ bracket, pickSemi1, pickSemi2, pickChampion, winnersB
       <div className={`mobile-team-row ${cls}${locked ? ' locked' : ''}`}
         onClick={() => !locked && status !== 'eliminated' && onClick && onClick()}>
         <span className="seed-badge" style={{ minWidth: 20, fontSize: 11, fontWeight: 700, color: 'var(--mid)' }}>{team.seed}</span>
-        <span className="mobile-team-name">{team.name}</span>
+        <span className="mobile-team-name">{displayName(team.name)}</span>
         {isLive && <span className="mobile-live-score">{liveScore}</span>}
         {!isLive && status === 'correct' && <span className="mobile-result-badge correct">✓</span>}
         {!isLive && status === 'eliminated' && <span className="mobile-result-badge eliminated">✗</span>}
